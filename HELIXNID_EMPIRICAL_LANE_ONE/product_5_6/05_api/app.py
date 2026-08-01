@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import sys
+from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 from threading import Lock
@@ -109,32 +110,49 @@ def ensure_model() -> dict[str, Any]:
         return _model_cache
 
 
-def score_payload(payload: dict[str, Any]) -> dict[str, Any]:
+def raw_score(payload: dict[str, Any]) -> dict[str, Any]:
     try:
-        result = engine.score(payload, ensure_model())
+        return engine.score(payload, ensure_model())
     except (ValueError, KeyError, TypeError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+def score_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    result = raw_score(payload)
     metrics.record(result)
     return result
 
 
 def locked_certificate() -> dict[str, Any]:
     if not LOCKED_CERT.exists():
-        return {
-            "status": "MODEL_AVAILABLE_CERTIFICATE_NOT_FOUND",
-            "model_path": str(MODEL_PATH),
-        }
+        return {"status": "MODEL_AVAILABLE_CERTIFICATE_NOT_FOUND", "model_path": str(MODEL_PATH)}
     return json.loads(LOCKED_CERT.read_text(encoding="utf-8"))
+
+
+def grouped_report(request: BatchRequest, field: str) -> dict[str, Any]:
+    scored = [raw_score(s.model_dump(exclude_none=True)) for s in request.shipments]
+    groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for row in scored:
+        key = str(row.get(field) or "UNKNOWN")
+        groups[key].append(row)
+    report = []
+    for key, rows in sorted(groups.items()):
+        n = len(rows)
+        report.append({
+            field: key,
+            "shipments": n,
+            "average_late_probability": sum(float(r["late_probability"]) for r in rows) / n,
+            "average_absolute_correction_days": sum(abs(float(r["helixnid_correction_days"])) for r in rows) / n,
+            "high_risk_shipments": sum(r["late_risk_band"] == "HIGH" for r in rows),
+            "elevated_or_higher_shipments": sum(r["late_risk_band"] in {"HIGH", "ELEVATED"} for r in rows),
+            "average_warning_hours": sum(float(r["warning_window_hours_to_original_eta"]) for r in rows) / n,
+        })
+    return {"group_by": field, "groups": report, "shipments": len(scored)}
 
 
 @app.get("/")
 def root():
-    return {
-        "product": "HELIXNID Carrier Precision Meter",
-        "api": "v1",
-        "docs": "/docs",
-        "health": "/health",
-    }
+    return {"product": "HELIXNID Carrier Precision Meter", "api": "v1", "docs": "/docs", "health": "/health"}
 
 
 @app.get("/health")
@@ -186,22 +204,31 @@ def late_risk(shipment: Shipment):
 def batch_score(request: BatchRequest):
     metrics.record_batch()
     results = [score_payload(s.model_dump(exclude_none=True)) for s in request.shipments]
-    high = sum(r["late_risk_band"] == "HIGH" for r in results)
-    elevated = sum(r["late_risk_band"] in {"HIGH", "ELEVATED"} for r in results)
     return {
         "count": len(results),
-        "high_risk": high,
-        "elevated_or_higher": elevated,
+        "high_risk": sum(r["late_risk_band"] == "HIGH" for r in results),
+        "elevated_or_higher": sum(r["late_risk_band"] in {"HIGH", "ELEVATED"} for r in results),
         "results": results,
     }
 
 
+@app.post("/carrier-report")
+def carrier_report(request: BatchRequest):
+    result = grouped_report(request, "carrier")
+    result["scope_boundary"] = "Carrier names are integration grouping fields in Olist-trained V1; the empirical model itself does not learn carrier-brand effects."
+    return result
+
+
+@app.post("/route-report")
+def route_report(request: BatchRequest):
+    return grouped_report(request, "destination")
+
+
 @app.get("/certificate")
 def certificate():
-    cert = locked_certificate()
     return {
         "product": "HELIXNID Carrier Precision Meter",
-        "empirical_certificate": cert,
+        "empirical_certificate": locked_certificate(),
         "api_scope": "delivery-promise correction and late-risk scoring at carrier handoff",
         "carrier_brand_boundary": "Olist V1 has no FedEx/UPS/DHL carrier identity; carrier/service fields are integration passthrough fields until carrier-labelled evidence is acquired.",
     }
