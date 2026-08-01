@@ -21,10 +21,17 @@ from pydantic import BaseModel, ConfigDict, Field
 HERE = Path(__file__).resolve()
 LANE_ROOT = HERE.parents[2]
 SRC = LANE_ROOT / "src"
-if str(SRC) not in sys.path:
-    sys.path.insert(0, str(SRC))
+EXT = LANE_ROOT / "product_5_9"
+for path in (SRC, EXT):
+    if str(path) not in sys.path:
+        sys.path.insert(0, str(path))
 
 import carrier_precision_engine as engine  # noqa: E402
+import carrier_evidence  # noqa: E402
+import enterprise_metrics  # noqa: E402
+import financial_value  # noqa: E402
+import general_precision_engine  # noqa: E402
+import live_intelligence  # noqa: E402
 
 LOCKED_CERT = LANE_ROOT / "reports_olist_eta" / "release_certificate.json"
 MODEL_PATH = engine.MODEL_PATH
@@ -34,9 +41,12 @@ DB_PATH = Path(os.getenv("HELIXNID_DB_PATH", str(RUNTIME_DIR / "carrier_precisio
 MAX_BATCH = int(os.getenv("HELIXNID_MAX_BATCH", "10000"))
 
 app = FastAPI(
-    title="HELIXNID Carrier Precision API",
-    version="1.1.0",
-    description="Correct delivery promises, score late risk, persist results, and replay/export shipment evidence.",
+    title="HELIXNID Precision API",
+    version="2.0.0",
+    description=(
+        "Carrier promise correction, live tracking intelligence, enterprise analytics, "
+        "financial scenarios, carrier-evidence ingestion, and general expected-vs-actual precision."
+    ),
 )
 app.add_middleware(
     CORSMiddleware,
@@ -65,6 +75,27 @@ class BatchRequest(BaseModel):
     shipments: list[Shipment] = Field(min_length=1, max_length=MAX_BATCH)
 
 
+class TrackingEvent(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    shipment_id: str | None = None
+    tracking_number: str | None = None
+    event_timestamp: str
+    status: str
+    location: str | None = None
+    estimated_delivery: str | None = None
+    exception_code: str | None = None
+    carrier: str | None = None
+
+
+class TrackingBatch(BaseModel):
+    events: list[TrackingEvent] = Field(min_length=1, max_length=MAX_BATCH)
+
+
+class CarrierEvidenceBatch(BaseModel):
+    source: str
+    rows: list[dict[str, Any]] = Field(min_length=1, max_length=MAX_BATCH)
+
+
 class RuntimeMetrics:
     def __init__(self):
         self.lock = Lock()
@@ -79,9 +110,9 @@ class RuntimeMetrics:
         with self.lock:
             self.shipments_scored += 1
             band = scored.get("late_risk_band")
-            if band == "HIGH":
+            if band in {"HIGH", "CRITICAL"}:
                 self.high_risk += 1
-            if band in {"HIGH", "ELEVATED"}:
+            if band in {"ELEVATED", "HIGH", "CRITICAL"}:
                 self.elevated_or_higher += 1
             self.total_abs_correction_days += abs(float(scored.get("helixnid_correction_days", 0.0)))
 
@@ -138,6 +169,8 @@ def init_db():
         conn.execute("CREATE INDEX IF NOT EXISTS idx_scored_utc ON scored_shipments(scored_utc)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_shipment_id ON scored_shipments(shipment_id)")
         conn.commit()
+    carrier_evidence.init_db(DB_PATH)
+    live_intelligence.init_db(DB_PATH)
 
 
 def persist_score(payload: dict[str, Any], result: dict[str, Any]):
@@ -197,8 +230,7 @@ def grouped_report(request: BatchRequest, field: str) -> dict[str, Any]:
     scored = [raw_score(s.model_dump(exclude_none=True)) for s in request.shipments]
     groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for row in scored:
-        key = str(row.get(field) or "UNKNOWN")
-        groups[key].append(row)
+        groups[str(row.get(field) or "UNKNOWN")].append(row)
     report = []
     for key, rows in sorted(groups.items()):
         n = len(rows)
@@ -207,8 +239,8 @@ def grouped_report(request: BatchRequest, field: str) -> dict[str, Any]:
             "shipments": n,
             "average_late_probability": sum(float(r["late_probability"]) for r in rows) / n,
             "average_absolute_correction_days": sum(abs(float(r["helixnid_correction_days"])) for r in rows) / n,
-            "high_risk_shipments": sum(r["late_risk_band"] == "HIGH" for r in rows),
-            "elevated_or_higher_shipments": sum(r["late_risk_band"] in {"HIGH", "ELEVATED"} for r in rows),
+            "high_risk_shipments": sum(r["late_risk_band"] in {"HIGH", "CRITICAL"} for r in rows),
+            "elevated_or_higher_shipments": sum(r["late_risk_band"] in {"ELEVATED", "HIGH", "CRITICAL"} for r in rows),
             "average_warning_hours": sum(float(r["warning_window_hours_to_original_eta"]) for r in rows) / n,
         })
     return {"group_by": field, "groups": report, "shipments": len(scored)}
@@ -225,14 +257,15 @@ init_db()
 @app.get("/")
 def root():
     return {
-        "product": "HELIXNID Carrier Precision Meter",
-        "api": "v1.1",
+        "product": "HELIXNID Precision Engine",
+        "api": "v2.0",
         "docs": "/docs",
-        "health": "/health",
-        "score": "/score-shipment",
-        "csv": "/batch-score-csv",
-        "history": "/recent",
-        "export": "/export.csv",
+        "carrier_scoring": ["/score-shipment", "/batch-score", "/batch-score-csv"],
+        "live_intelligence": ["/tracking-event", "/tracking-events/batch", "/shipment/{shipment_id}/live"],
+        "carrier_evidence": ["/carrier-evidence/import", "/carrier-evidence/import-csv", "/carrier-evidence/status"],
+        "enterprise": ["/enterprise/summary", "/enterprise/breakdown", "/enterprise/alerts"],
+        "financial": "/financial-value",
+        "general_precision": ["/precision/fit", "/precision/score", "/precision/replay"],
     }
 
 
@@ -241,12 +274,20 @@ def health():
     model = ensure_model()
     return {
         "status": "ok",
+        "api_version": "2.0.0",
         "model": model.get("model"),
         "dataset_sha256": model.get("dataset_sha256"),
         "trained_real_completed_orders": model.get("trained_real_completed_orders"),
         "synthetic_rows": model.get("synthetic_rows"),
         "persisted_shipments": persisted_count(),
         "database": str(DB_PATH),
+        "modules": {
+            "carrier_evidence": "READY",
+            "live_tracking": "READY",
+            "enterprise_metrics": "READY",
+            "financial_value": "READY",
+            "general_precision": "READY",
+        },
     }
 
 
@@ -289,8 +330,8 @@ def batch_score(request: BatchRequest):
     results = [score_payload(s.model_dump(exclude_none=True)) for s in request.shipments]
     return {
         "count": len(results),
-        "high_risk": sum(r["late_risk_band"] == "HIGH" for r in results),
-        "elevated_or_higher": sum(r["late_risk_band"] in {"HIGH", "ELEVATED"} for r in results),
+        "high_risk": sum(r["late_risk_band"] in {"HIGH", "CRITICAL"} for r in results),
+        "elevated_or_higher": sum(r["late_risk_band"] in {"ELEVATED", "HIGH", "CRITICAL"} for r in results),
         "results": results,
     }
 
@@ -312,8 +353,8 @@ async def batch_score_csv(file: UploadFile = File(...)):
     return {
         "filename": file.filename,
         "count": len(results),
-        "high_risk": sum(r["late_risk_band"] == "HIGH" for r in results),
-        "elevated_or_higher": sum(r["late_risk_band"] in {"HIGH", "ELEVATED"} for r in results),
+        "high_risk": sum(r["late_risk_band"] in {"HIGH", "CRITICAL"} for r in results),
+        "elevated_or_higher": sum(r["late_risk_band"] in {"ELEVATED", "HIGH", "CRITICAL"} for r in results),
         "results": results,
     }
 
@@ -321,13 +362,119 @@ async def batch_score_csv(file: UploadFile = File(...)):
 @app.post("/carrier-report")
 def carrier_report(request: BatchRequest):
     result = grouped_report(request, "carrier")
-    result["scope_boundary"] = "Carrier names are integration grouping fields in Olist-trained V1; the empirical model itself does not learn carrier-brand effects."
+    result["scope_boundary"] = "Carrier names are grouping fields until the carrier-evidence gate has enough completed rows to train carrier effects."
     return result
 
 
 @app.post("/route-report")
 def route_report(request: BatchRequest):
     return grouped_report(request, "destination")
+
+
+@app.post("/tracking-event")
+def tracking_event(event: TrackingEvent):
+    try:
+        return live_intelligence.record_event(DB_PATH, event.model_dump(exclude_none=True), raw_score)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.post("/tracking-events/batch")
+def tracking_event_batch(request: TrackingBatch):
+    results = []
+    errors = []
+    for index, event in enumerate(request.events, 1):
+        try:
+            results.append(live_intelligence.record_event(DB_PATH, event.model_dump(exclude_none=True), raw_score))
+        except Exception as exc:
+            errors.append({"event": index, "error": str(exc)})
+    return {"accepted": len(results), "rejected": len(errors), "results": results, "errors": errors}
+
+
+@app.get("/shipment/{shipment_id}/live")
+def live_state(shipment_id: str):
+    state = live_intelligence.get_state(DB_PATH, shipment_id)
+    if state is None:
+        raise HTTPException(status_code=404, detail="live shipment state not found")
+    return state
+
+
+@app.get("/connector-contracts")
+def connector_contracts():
+    return carrier_evidence.CONNECTOR_CONTRACTS
+
+
+@app.post("/carrier-evidence/import")
+def import_carrier_evidence(request: CarrierEvidenceBatch):
+    return carrier_evidence.import_completed_rows(DB_PATH, request.rows, request.source)
+
+
+@app.post("/carrier-evidence/import-csv")
+async def import_carrier_evidence_csv(source: str, file: UploadFile = File(...)):
+    data = await file.read()
+    try:
+        text = data.decode("utf-8-sig")
+    except UnicodeDecodeError as exc:
+        raise HTTPException(status_code=422, detail="CSV must be UTF-8") from exc
+    rows = list(csv.DictReader(io.StringIO(text)))
+    if len(rows) > MAX_BATCH:
+        raise HTTPException(status_code=413, detail=f"CSV exceeds maximum batch size {MAX_BATCH}")
+    return carrier_evidence.import_completed_rows(DB_PATH, rows, source)
+
+
+@app.get("/carrier-evidence/status")
+def carrier_evidence_status():
+    return carrier_evidence.evidence_status(DB_PATH)
+
+
+@app.get("/enterprise/summary")
+def enterprise_summary():
+    return enterprise_metrics.summary(DB_PATH)
+
+
+@app.get("/enterprise/breakdown")
+def enterprise_breakdown(group_by: str = "carrier", limit: int = 100):
+    try:
+        return enterprise_metrics.breakdown(DB_PATH, group_by, limit)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.get("/enterprise/alerts")
+def enterprise_alerts(limit: int = 100):
+    return enterprise_metrics.live_alerts(DB_PATH, limit)
+
+
+@app.post("/financial-value")
+def financial_value_endpoint(payload: dict[str, Any]):
+    try:
+        return financial_value.calculate(payload)
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.post("/precision/fit")
+def precision_fit(payload: dict[str, Any]):
+    try:
+        return general_precision_engine.fit(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.post("/precision/score")
+def precision_score(payload: dict[str, Any]):
+    try:
+        return general_precision_engine.score(payload["row"], payload["model"])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.post("/precision/replay")
+def precision_replay(payload: dict[str, Any]):
+    try:
+        return general_precision_engine.replay(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @app.get("/recent")
@@ -371,8 +518,8 @@ def certificate():
     return {
         "product": "HELIXNID Carrier Precision Meter",
         "empirical_certificate": locked_certificate(),
-        "api_scope": "delivery-promise correction and late-risk scoring at carrier handoff",
-        "carrier_brand_boundary": "Olist V1 has no FedEx/UPS/DHL carrier identity; carrier/service fields are integration passthrough fields until carrier-labelled evidence is acquired.",
+        "api_scope": "delivery-promise correction, live operational tracking intelligence, enterprise measurement, and general precision replay",
+        "carrier_brand_boundary": "Carrier-specific empirical claims remain gated until real completed carrier-labelled rows retain the original promise and actual delivery.",
     }
 
 
@@ -380,4 +527,5 @@ def certificate():
 def runtime_metrics():
     snap = metrics.snapshot()
     snap["persisted_shipments"] = persisted_count()
+    snap["enterprise"] = enterprise_metrics.summary(DB_PATH)
     return snap
