@@ -43,10 +43,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Acquire real Amazon routes and run route benchmark
-        run: python HELIXNID_EMPIRICAL_LANE_ONE/src/helixnid_last_mile_benchmark.py
+      - name: Acquire real Amazon routes and run usable-intersection route benchmark
+        run: python HELIXNID_EMPIRICAL_LANE_ONE/src/helixnid_last_mile_benchmark_v2.py
       - name: Show Amazon empirical certificate
         run: cat HELIXNID_EMPIRICAL_LANE_ONE/reports/release_certificate.json
+      - name: Show Amazon evaluation intersection audit
+        run: cat HELIXNID_EMPIRICAL_LANE_ONE/reports/evaluation_intersection_audit.json
       - name: Preserve Amazon evidence package
         uses: actions/upload-artifact@v4
         with:
