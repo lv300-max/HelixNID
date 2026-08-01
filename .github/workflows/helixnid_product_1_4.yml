@@ -10,6 +10,10 @@ on:
       - 'HELIXNID_EMPIRICAL_LANE_ONE/src/run_product_1_4.py'
       - 'HELIXNID_EMPIRICAL_LANE_ONE/requirements_product_1_4.txt'
       - '.github/workflows/helixnid_product_1_4.yml'
+  pull_request:
+    paths:
+      - 'HELIXNID_EMPIRICAL_LANE_ONE/**'
+      - '.github/workflows/helixnid_product_1_4.yml'
   workflow_dispatch:
 
 permissions:
@@ -40,6 +44,7 @@ jobs:
         run: cat HELIXNID_EMPIRICAL_LANE_ONE/product_1_4/PRODUCT_1_4_CERTIFICATE.json
 
       - name: Lock generated product evidence
+        if: github.event_name == 'push'
         run: |
           git config user.name "HELIXNID Product Builder"
           git config user.email "actions@users.noreply.github.com"
