@@ -1,7 +1,8 @@
 {
-  "certificate": "HELIXNID_PRODUCT_5_9_VALIDATION_V1",
+  "certificate": "HELIXNID_PRODUCT_5_9_VALIDATION_V2",
   "status": "PASS",
   "checks": {
+    "embedded_offline_model": true,
     "carrier_evidence": true,
     "live_intelligence": true,
     "delivered_finality": true,
