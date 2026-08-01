@@ -4,6 +4,7 @@
   "checks": {
     "carrier_evidence": true,
     "live_intelligence": true,
+    "delivered_finality": true,
     "enterprise_metrics": true,
     "financial_value": true,
     "general_precision": true,
