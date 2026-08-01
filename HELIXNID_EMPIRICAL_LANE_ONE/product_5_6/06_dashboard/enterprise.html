@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>HELIXNID Enterprise Precision</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .nav-link{color:#bfeeff;text-decoration:none;font-weight:750;padding:10px 13px;border:1px solid rgba(255,255,255,.12);border-radius:11px}
+    .triple-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:14px}
+    .select{border:1px solid rgba(255,255,255,.12);background:#071016;color:white;border-radius:11px;padding:11px 12px}
+    textarea{width:100%;min-height:120px;border:1px solid rgba(255,255,255,.12);background:rgba(3,8,12,.7);color:white;border-radius:11px;padding:11px 12px}
+    .full{grid-column:1/-1}.status-copy{color:#91a5b3;font-size:13px;line-height:1.55}.value{font-size:26px;letter-spacing:-.04em}.alert-critical{color:#ff8e8e}.alert-high{color:#ffc77e}
+    @media(max-width:1000px){.triple-grid{grid-template-columns:1fr}.full{grid-column:auto}}
+  </style>
+</head>
+<body>
+  <div class="bg-orb orb-a"></div><div class="bg-orb orb-b"></div>
+  <main class="shell">
+    <header class="topbar glass">
+      <div><div class="eyebrow">HELIXNID</div><h1>Enterprise Precision Console</h1></div>
+      <div class="api-control">
+        <a class="nav-link" href="index.html">Shipment Meter</a>
+        <input id="apiBase" value="http://localhost:8000" />
+        <button id="connectBtn">Connect</button><span id="statusDot" class="status-dot"></span>
+      </div>
+    </header>
+
+    <section class="metric-grid">
+      <article class="metric glass"><span>Shipments scored</span><strong id="mScored">0</strong></article>
+      <article class="metric glass"><span>Tracking events</span><strong id="mEvents">0</strong></article>
+      <article class="metric glass"><span>Live high risk</span><strong id="mLiveHigh">0</strong></article>
+      <article class="metric glass"><span>Carrier evidence rows</span><strong id="mEvidence">0</strong></article>
+    </section>
+
+    <section class="triple-grid">
+      <article class="panel glass">
+        <div class="eyebrow">LIVE INTELLIGENCE</div><h2>Add tracking event</h2>
+        <form id="eventForm" class="form-grid">
+          <label>Shipment ID<input id="eventShipment" required /></label>
+          <label>Carrier<input id="eventCarrier" /></label>
+          <label>Event time<input id="eventTime" type="datetime-local" required /></label>
+          <label>Status<input id="eventStatus" placeholder="Delayed / Out for delivery" required /></label>
+          <label>Location<input id="eventLocation" /></label>
+          <label>New carrier ETA<input id="eventEta" type="datetime-local" /></label>
+          <button class="primary wide" type="submit">Update live risk</button>
+        </form>
+        <div id="liveResult" class="status-copy"></div>
+      </article>
+
+      <article class="panel glass">
+        <div class="eyebrow">ENTERPRISE BREAKDOWN</div><h2>Weakness map</h2>
+        <div class="api-control" style="margin-top:14px">
+          <select id="groupBy" class="select"><option>carrier</option><option>service</option><option>destination</option><option>late_risk_band</option><option>confidence</option></select>
+          <button id="loadBreakdown">Load</button>
+        </div>
+        <div class="table-wrap"><table><thead><tr><th>Group</th><th>Shipments</th><th>Avg correction</th><th>Risk</th></tr></thead><tbody id="breakdownRows"><tr><td colspan="4" class="muted">No data.</td></tr></tbody></table></div>
+      </article>
+
+      <article class="panel glass">
+        <div class="eyebrow">CARRIER EVIDENCE</div><h2>Evidence gate</h2>
+        <div class="proof-grid">
+          <div><span>Completed rows</span><strong id="eRows">0</strong></div>
+          <div><span>Carrier labels</span><strong id="eCarriers">0</strong></div>
+          <div class="full"><span>Carrier model gate</span><strong id="eGate">DATA ACCUMULATION</strong></div>
+        </div>
+        <p class="status-copy">Real carrier-specific claims activate only after completed rows retain the original promise and actual delivery.</p>
+      </article>
+    </section>
+
+    <section class="lower-grid">
+      <article class="panel glass">
+        <div class="eyebrow">FINANCIAL LAYER</div><h2>Customer-input value</h2>
+        <form id="financialForm" class="form-grid">
+          <label>Shipment volume<input id="fVolume" type="number" value="10000" min="0" /></label>
+          <label>Intervention success %<input id="fSuccess" type="number" value="25" min="0" max="100" /></label>
+          <label>Support contact rate %<input id="fSupportRate" type="number" value="5" min="0" /></label>
+          <label>Support contact cost<input id="fSupportCost" type="number" value="8" min="0" step="0.01" /></label>
+          <label>Refund/replacement rate %<input id="fRefundRate" type="number" value="1" min="0" /></label>
+          <label>Refund/replacement cost<input id="fRefundCost" type="number" value="35" min="0" step="0.01" /></label>
+          <button class="primary wide" type="submit">Calculate scenario</button>
+        </form>
+        <div class="proof-grid"><div><span>Projected value</span><strong id="fValue">$0</strong></div><div><span>Per shipment</span><strong id="fPer">$0</strong></div></div>
+        <p class="status-copy">No dollar claim is generated without these customer inputs.</p>
+      </article>
+
+      <article class="panel glass">
+        <div class="eyebrow">ACTIVE ALERTS</div><h2>Shipments needing attention</h2>
+        <div class="table-wrap"><table><thead><tr><th>ID</th><th>Live risk</th><th>Status</th><th>Silence</th></tr></thead><tbody id="alertRows"><tr><td colspan="4" class="muted">No alerts.</td></tr></tbody></table></div>
+      </article>
+    </section>
+  </main>
+  <script src="enterprise.js"></script>
+</body>
+</html>
