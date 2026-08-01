@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import carrier_evidence
+import embedded_carrier_model
 import enterprise_metrics
 import financial_value
 import general_precision_engine
@@ -18,7 +19,18 @@ import official_connectors
 def main():
     checks = {}
     with tempfile.TemporaryDirectory() as td:
-        db = Path(td) / "validation.db"
+        root = Path(td)
+        db = root / "validation.db"
+
+        embedded_path = root / "carrier_precision_model_v1.json"
+        embedded = embedded_carrier_model.write_model(embedded_path)
+        checks["embedded_offline_model"] = (
+            embedded_path.exists()
+            and embedded.get("dataset_sha256") == embedded_carrier_model.EXPECTED_DATASET_SHA256
+            and embedded.get("trained_real_completed_orders") == 96281
+            and len(embedded.get("levels", [])) == 4
+        )
+
         with sqlite3.connect(db) as conn:
             conn.execute(
                 """
@@ -43,9 +55,7 @@ def main():
                 "purchase_time": "2026-01-01T09:00:00+00:00",
                 "carrier_handoff_time": "2026-01-02T09:00:00+00:00",
                 "promised_delivery_time": "2026-01-06T17:00:00+00:00",
-                "carrier": "FedEx",
-                "service": "Ground",
-                "destination": "08731"
+                "carrier": "FedEx", "service": "Ground", "destination": "08731"
             }
             base = {
                 "shipment_id": "VALIDATE-1", "carrier": "FedEx", "service": "Ground", "destination": "08731",
@@ -67,8 +77,7 @@ def main():
             "shipment_id": "CARRIER-1", "carrier": "USPS", "service": "Priority",
             "carrier_handoff_time": "2026-01-01T10:00:00+00:00",
             "promised_delivery_time": "2026-01-04T17:00:00+00:00",
-            "actual_delivery_time": "2026-01-05T12:00:00+00:00",
-            "destination": "08731"
+            "actual_delivery_time": "2026-01-05T12:00:00+00:00", "destination": "08731"
         }], "validation")
         checks["carrier_evidence"] = imported["accepted"] == 1 and imported["rejected"] == 0
 
@@ -125,7 +134,7 @@ def main():
         checks["official_connectors"] = len(normalized) == 1 and normalized[0]["carrier"] == "UPS"
 
     certificate = {
-        "certificate": "HELIXNID_PRODUCT_5_9_VALIDATION_V1",
+        "certificate": "HELIXNID_PRODUCT_5_9_VALIDATION_V2",
         "status": "PASS" if all(checks.values()) else "FAIL",
         "checks": checks,
         "all_checks_passed": all(checks.values()),
