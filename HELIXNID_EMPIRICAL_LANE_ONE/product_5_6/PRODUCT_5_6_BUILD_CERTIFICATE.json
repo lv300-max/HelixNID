@@ -1,0 +1,43 @@
+{
+  "certificate": "HELIXNID_CARRIER_PRECISION_PRODUCT_5_6_BUILD_V1",
+  "status": "PASS",
+  "api_required_routes": [
+    "/batch-score",
+    "/carrier-report",
+    "/certificate",
+    "/correct-eta",
+    "/health",
+    "/late-risk",
+    "/metrics",
+    "/route-report",
+    "/score-shipment"
+  ],
+  "api_routes_found": [
+    "/batch-score",
+    "/carrier-report",
+    "/certificate",
+    "/correct-eta",
+    "/health",
+    "/late-risk",
+    "/metrics",
+    "/route-report",
+    "/score-shipment"
+  ],
+  "missing_api_routes": [],
+  "dashboard_required_files": [
+    "app.js",
+    "index.html",
+    "styles.css"
+  ],
+  "missing_dashboard_files": [],
+  "dashboard_contract": {
+    "calls_score_shipment": true,
+    "calls_metrics": true,
+    "calls_certificate": true,
+    "has_live_score_form": true,
+    "has_evidence_panel": true
+  },
+  "scoring_source": "HELIXNID_EMPIRICAL_LANE_ONE/src/carrier_precision_engine.py",
+  "browser_scoring_logic": false,
+  "empirical_claim_source": "HELIXNID_EMPIRICAL_LANE_ONE/reports_olist_eta/release_certificate.json"
+}
