@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
-"""HELIXNID Carrier Precision Meter — real Olist delivery-promise benchmark.
+"""HELIXNID Carrier Precision Meter — exact real Olist empirical benchmark.
 
-Data: Brazilian E-Commerce Public Dataset by Olist (real anonymized orders, 2016–2018).
-Baseline: customer-facing estimated delivery DATE supplied by the marketplace.
-HELIXNID: historical hierarchical correction learned only from earlier completed orders.
-Evaluation: chronological holdout. No synthetic rows. No future-target leakage.
-
-Because Olist's promise field is a delivery DATE (midnight timestamp), the primary
-ETA metric is absolute DATE error in days, not fake hour-level precision.
+Real source: Brazilian E-Commerce Public Dataset by Olist.
+Primary metric: customer-facing estimated delivery DATE vs actual delivery DATE.
+Correction time: carrier handoff. Only information known by carrier handoff is used.
+Evaluation: strict chronological 70/30 historical/future split.
+Synthetic rows used for empirical claims: 0.
 """
 
 from __future__ import annotations
@@ -16,29 +14,36 @@ import csv
 import hashlib
 import json
 import math
+import random
 import shutil
 import statistics
 import urllib.request
 import zipfile
-from collections import Counter, defaultdict
+from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-DATA = ROOT / "data" / "olist"
+DATA = ROOT / "data" / "olist_eta"
 REPORTS = ROOT / "reports_olist_eta"
 DATA.mkdir(parents=True, exist_ok=True)
 REPORTS.mkdir(parents=True, exist_ok=True)
 
-URL = "https://www.kaggle.com/api/v1/datasets/download/olistbr/brazilian-ecommerce"
-ARCHIVE = DATA / "olist_brazilian_ecommerce.zip"
-EXTRACT = DATA / "raw"
+KAGGLE_URL = "https://www.kaggle.com/api/v1/datasets/download/olistbr/brazilian-ecommerce"
+RAW_FALLBACK_URL = "https://raw.githubusercontent.com/brunolucian/CursoIntermediarioR/main/Dados/olist_orders_dataset.csv"
+ORDERS_NAME = "olist_orders_dataset.csv"
+ORDERS_BYTES = 17_654_914
+ORDERS_SHA256 = "8df58ef3d2d7e9944010f7beecd9b75367f5588ec6e3c91cec19ae3345ef9ecf"
+ARCHIVE_BYTES = 44_717_580
+ARCHIVE_SHA256 = "967e41e04fc306fe604e2a693f488995a8b41e5047418f8a5c8e4abd6deca784"
 
-EXPECTED = {
-    "archive": (44_717_580, "967e41e04fc306fe604e2a693f488995a8b41e5047418f8a5c8e4abd6deca784"),
-    "olist_orders_dataset.csv": (17_654_914, "8df58ef3d2d7e9944010f7beecd9b75367f5588ec6e3c91cec19ae3345ef9ecf"),
-    "olist_customers_dataset.csv": (9_033_957, "983a422239e1712ded753b3bf9ecf47dc73f144d306029dcfa99e70a226883d2"),
-}
+# Fixed before future evaluation. No test-target feature is used.
+LEVELS = [
+    (("lead_bucket", "handoff_bucket", "slack_bucket", "weekday"), 20),
+    (("lead_bucket", "slack_bucket", "weekday"), 20),
+    (("lead_bucket", "slack_bucket"), 30),
+    (("slack_bucket",), 50),
+]
 
 
 def now_utc() -> str:
@@ -53,366 +58,388 @@ def sha256(path: Path) -> str:
     return h.hexdigest()
 
 
-def verify(path: Path, expected_size: int, expected_sha: str) -> None:
-    if path.stat().st_size != expected_size:
-        raise RuntimeError(f"size mismatch: {path} {path.stat().st_size} != {expected_size}")
+def verify(path: Path, size: int, digest: str) -> None:
+    if path.stat().st_size != size:
+        raise RuntimeError(f"size mismatch for {path.name}: {path.stat().st_size} != {size}")
     got = sha256(path)
-    if got != expected_sha:
-        raise RuntimeError(f"sha256 mismatch: {path} {got} != {expected_sha}")
+    if got != digest:
+        raise RuntimeError(f"sha256 mismatch for {path.name}: {got} != {digest}")
 
 
-def acquire() -> dict:
-    if not ARCHIVE.exists():
-        part = ARCHIVE.with_suffix(".zip.part")
-        req = urllib.request.Request(URL, headers={"User-Agent": "HELIXNID-Carrier-Precision/1.0"})
-        with urllib.request.urlopen(req, timeout=180) as r, part.open("wb") as out:
-            shutil.copyfileobj(r, out, length=4 * 1024 * 1024)
-        part.replace(ARCHIVE)
-    verify(ARCHIVE, *EXPECTED["archive"])
-    EXTRACT.mkdir(parents=True, exist_ok=True)
-    orders = EXTRACT / "olist_orders_dataset.csv"
-    customers = EXTRACT / "olist_customers_dataset.csv"
-    if not orders.exists() or not customers.exists():
-        with zipfile.ZipFile(ARCHIVE) as z:
-            for name in ("olist_orders_dataset.csv", "olist_customers_dataset.csv"):
-                member = z.getinfo(name)
-                target = (EXTRACT / name).resolve()
-                if EXTRACT.resolve() not in target.parents:
-                    raise RuntimeError("unsafe archive path")
-                z.extract(member, EXTRACT)
-    verify(orders, *EXPECTED["olist_orders_dataset.csv"])
-    verify(customers, *EXPECTED["olist_customers_dataset.csv"])
+def acquire_orders() -> dict:
+    orders = DATA / ORDERS_NAME
+    archive = DATA / "olist_brazilian_ecommerce.zip"
+    source_used = None
+
+    if orders.exists():
+        try:
+            verify(orders, ORDERS_BYTES, ORDERS_SHA256)
+            source_used = "cached_verified"
+        except Exception:
+            orders.unlink()
+
+    if not orders.exists():
+        try:
+            part = archive.with_suffix(".zip.part")
+            req = urllib.request.Request(KAGGLE_URL, headers={"User-Agent": "HELIXNID-Carrier-Precision/1.0"})
+            with urllib.request.urlopen(req, timeout=180) as r, part.open("wb") as out:
+                shutil.copyfileobj(r, out, length=4 * 1024 * 1024)
+            part.replace(archive)
+            verify(archive, ARCHIVE_BYTES, ARCHIVE_SHA256)
+            with zipfile.ZipFile(archive) as z:
+                with z.open(ORDERS_NAME) as src, orders.open("wb") as dst:
+                    shutil.copyfileobj(src, dst)
+            source_used = KAGGLE_URL
+        except Exception:
+            if orders.exists():
+                orders.unlink()
+            req = urllib.request.Request(RAW_FALLBACK_URL, headers={"User-Agent": "HELIXNID-Carrier-Precision/1.0"})
+            with urllib.request.urlopen(req, timeout=180) as r, orders.open("wb") as out:
+                shutil.copyfileobj(r, out, length=4 * 1024 * 1024)
+            source_used = RAW_FALLBACK_URL
+
+    verify(orders, ORDERS_BYTES, ORDERS_SHA256)
     manifest = {
-        "source_url": URL,
-        "source": "Brazilian E-Commerce Public Dataset by Olist",
-        "archive_bytes": ARCHIVE.stat().st_size,
-        "archive_sha256": sha256(ARCHIVE),
-        "files": {
-            "olist_orders_dataset.csv": {"bytes": orders.stat().st_size, "sha256": sha256(orders)},
-            "olist_customers_dataset.csv": {"bytes": customers.stat().st_size, "sha256": sha256(customers)},
-        },
+        "canonical_dataset": "Brazilian E-Commerce Public Dataset by Olist",
+        "canonical_url": KAGGLE_URL,
+        "source_used": source_used,
+        "orders_file": ORDERS_NAME,
+        "orders_bytes": orders.stat().st_size,
+        "orders_sha256": sha256(orders),
+        "expected_orders_sha256": ORDERS_SHA256,
+        "identity_verified": True,
     }
     (REPORTS / "acquisition_manifest.json").write_text(json.dumps(manifest, indent=2))
     return manifest
 
 
-def dt(s: str):
-    s = (s or "").strip()
-    return datetime.fromisoformat(s) if s else None
+def parse_dt(value: str):
+    value = (value or "").strip()
+    return datetime.fromisoformat(value) if value else None
 
 
-def lead_bucket(days: float) -> str:
-    if days < 7: return "<7"
-    if days < 14: return "7-13"
-    if days < 21: return "14-20"
-    if days < 28: return "21-27"
-    if days < 42: return "28-41"
+def lead_bucket(x: float) -> str:
+    if x < 7: return "<7"
+    if x < 14: return "7-13"
+    if x < 21: return "14-20"
+    if x < 28: return "21-27"
+    if x < 42: return "28-41"
     return "42+"
 
 
-def handoff_bucket(days: float) -> str:
-    if days < 1: return "<1"
-    if days < 2: return "1-2"
-    if days < 4: return "2-4"
-    if days < 7: return "4-7"
+def handoff_bucket(x: float) -> str:
+    if x < 1: return "<1"
+    if x < 2: return "1-2"
+    if x < 4: return "2-4"
+    if x < 7: return "4-7"
     return "7+"
 
 
-def load_rows() -> tuple[list[dict], dict]:
-    customer_state = {}
-    with (EXTRACT / "olist_customers_dataset.csv").open(newline="", encoding="utf-8") as f:
-        for r in csv.DictReader(f):
-            customer_state[r["customer_id"]] = r["customer_state"]
+def slack_bucket(x: float) -> str:
+    if x < 0: return "<0"
+    if x < 2: return "0-2"
+    if x < 4: return "2-4"
+    if x < 7: return "4-7"
+    if x < 10: return "7-10"
+    if x < 14: return "10-14"
+    return "14+"
 
-    raw = 0
-    delivered = 0
-    complete = 0
-    valid = 0
+
+def load_real_orders() -> tuple[list[dict], dict]:
+    raw = delivered = complete = valid = 0
     rows = []
-    with (EXTRACT / "olist_orders_dataset.csv").open(newline="", encoding="utf-8") as f:
+    with (DATA / ORDERS_NAME).open(newline="", encoding="utf-8") as f:
         for r in csv.DictReader(f):
             raw += 1
             if r["order_status"] != "delivered":
                 continue
             delivered += 1
-            purchase = dt(r["order_purchase_timestamp"])
-            handoff = dt(r["order_delivered_carrier_date"])
-            actual = dt(r["order_delivered_customer_date"])
-            estimate = dt(r["order_estimated_delivery_date"])
+            purchase = parse_dt(r["order_purchase_timestamp"])
+            handoff = parse_dt(r["order_delivered_carrier_date"])
+            actual = parse_dt(r["order_delivered_customer_date"])
+            estimate = parse_dt(r["order_estimated_delivery_date"])
             if not all((purchase, handoff, actual, estimate)):
                 continue
             complete += 1
-            # The correction is issued at carrier handoff. Remove impossible chronology.
             if handoff < purchase or actual < handoff or estimate < purchase:
                 continue
-            state = customer_state.get(r["customer_id"], "??")
+            valid += 1
             promise_days = (estimate - purchase).total_seconds() / 86400.0
             handoff_days = (handoff - purchase).total_seconds() / 86400.0
+            slack_days = (estimate - handoff).total_seconds() / 86400.0
             error_days = (actual.date() - estimate.date()).days
             rows.append({
                 "order_id": r["order_id"],
-                "state": state,
                 "purchase": purchase,
                 "handoff": handoff,
                 "actual": actual,
                 "estimate": estimate,
-                "promise_days": promise_days,
-                "lead_bucket": lead_bucket(promise_days),
-                "handoff_days": handoff_days,
-                "handoff_bucket": handoff_bucket(handoff_days),
-                "purchase_weekday": purchase.weekday(),
-                "purchase_month": purchase.month,
                 "error_days": error_days,
                 "late": int(error_days > 0),
+                "lead_bucket": lead_bucket(promise_days),
+                "handoff_bucket": handoff_bucket(handoff_days),
+                "slack_bucket": slack_bucket(slack_days),
+                "weekday": purchase.weekday(),
             })
-            valid += 1
-    rows.sort(key=lambda x: (x["purchase"], x["order_id"]))
-    audit = {"raw_orders": raw, "delivered_status_rows": delivered, "complete_timestamp_rows": complete, "valid_chronology_rows": valid}
-    return rows, audit
-
-
-def median_map(rows: list[dict], key_fn):
-    d = defaultdict(list)
-    for r in rows:
-        d[key_fn(r)].append(r["error_days"])
-    return {k: statistics.median(v) for k, v in d.items()}
-
-
-def rate_map(rows: list[dict], key_fn):
-    d = defaultdict(lambda: [0, 0])
-    for r in rows:
-        x = d[key_fn(r)]; x[0] += r["late"]; x[1] += 1
-    return {k: a / n for k, (a, n) in d.items()}
-
-
-class Corrector:
-    def __init__(self, rows: list[dict]):
-        self.global_median = statistics.median(r["error_days"] for r in rows)
-        self.global_late = statistics.fmean(r["late"] for r in rows)
-        self.m1 = median_map(rows, lambda r: (r["state"], r["lead_bucket"], r["handoff_bucket"], r["purchase_weekday"]))
-        self.m2 = median_map(rows, lambda r: (r["state"], r["lead_bucket"], r["handoff_bucket"]))
-        self.m3 = median_map(rows, lambda r: (r["state"], r["lead_bucket"]))
-        self.m4 = median_map(rows, lambda r: (r["state"],))
-        self.r1 = rate_map(rows, lambda r: (r["state"], r["lead_bucket"], r["handoff_bucket"], r["purchase_weekday"]))
-        self.r2 = rate_map(rows, lambda r: (r["state"], r["lead_bucket"], r["handoff_bucket"]))
-        self.r3 = rate_map(rows, lambda r: (r["state"], r["lead_bucket"]))
-        self.r4 = rate_map(rows, lambda r: (r["state"],))
-
-    def correction(self, r: dict) -> float:
-        keys = [
-            (r["state"], r["lead_bucket"], r["handoff_bucket"], r["purchase_weekday"]),
-            (r["state"], r["lead_bucket"], r["handoff_bucket"]),
-            (r["state"], r["lead_bucket"]),
-            (r["state"],),
-        ]
-        for m, k in zip((self.m1, self.m2, self.m3, self.m4), keys):
-            if k in m:
-                return m[k]
-        return self.global_median
-
-    def late_risk(self, r: dict) -> float:
-        keys = [
-            (r["state"], r["lead_bucket"], r["handoff_bucket"], r["purchase_weekday"]),
-            (r["state"], r["lead_bucket"], r["handoff_bucket"]),
-            (r["state"], r["lead_bucket"]),
-            (r["state"],),
-        ]
-        for m, k in zip((self.r1, self.r2, self.r3, self.r4), keys):
-            if k in m:
-                return m[k]
-        return self.global_late
-
-
-def classification(rows: list[dict], corrector: Corrector, threshold: float) -> dict:
-    tp = fp = tn = fn = 0
-    leads = []
-    for r in rows:
-        pred = corrector.late_risk(r) >= threshold
-        actual = bool(r["late"])
-        if pred and actual:
-            tp += 1
-            leads.append((r["actual"] - r["handoff"]).total_seconds() / 3600.0)
-        elif pred and not actual: fp += 1
-        elif not pred and actual: fn += 1
-        else: tn += 1
-    precision = tp / (tp + fp) if tp + fp else 0.0
-    recall = tp / (tp + fn) if tp + fn else 0.0
-    f1 = 2 * precision * recall / (precision + recall) if precision + recall else 0.0
-    return {
-        "threshold": threshold, "tp": tp, "fp": fp, "tn": tn, "fn": fn,
-        "precision": precision, "recall": recall, "f1": f1,
-        "warning_lead_hours_mean_true_positive": statistics.fmean(leads) if leads else 0.0,
-        "warning_lead_hours_median_true_positive": statistics.median(leads) if leads else 0.0,
+    rows.sort(key=lambda r: (r["purchase"], r["order_id"]))
+    return rows, {
+        "raw_orders": raw,
+        "delivered_status_rows": delivered,
+        "complete_timestamp_rows": complete,
+        "chronology_exclusions": complete - valid,
+        "valid_real_completed_orders": valid,
     }
 
 
-def choose_threshold(fit: list[dict], calibration: list[dict]) -> tuple[float, list[dict]]:
-    c = Corrector(fit)
-    results = []
-    # Deterministic thresholds; chosen only from past/training data.
-    for i in range(1, 51):
-        t = i / 100.0
-        results.append(classification(calibration, c, t))
-    results.sort(key=lambda x: (x["f1"], x["recall"], x["precision"]), reverse=True)
-    return results[0]["threshold"], results
-
-
-def evaluate(rows: list[dict], corrector: Corrector):
-    out = []
+def group_stat(rows: list[dict], cols: tuple[str, ...], value: str, minimum: int, mean=False):
+    groups = defaultdict(list)
     for r in rows:
-        baseline = abs(r["error_days"])
-        corr = corrector.correction(r)
-        helix_error = r["error_days"] - corr
-        global_error = r["error_days"] - corrector.global_median
-        out.append({
-            **r,
-            "baseline_abs_error_days": baseline,
-            "global_abs_error_days": abs(global_error),
-            "helix_correction_days": corr,
-            "helix_error_days": helix_error,
-            "helix_abs_error_days": abs(helix_error),
-            "late_risk": corrector.late_risk(r),
-        })
+        groups[tuple(r[c] for c in cols)].append(r[value])
+    out = {}
+    for key, vals in groups.items():
+        if len(vals) >= minimum:
+            out[key] = statistics.fmean(vals) if mean else statistics.median(vals)
     return out
 
 
-def pct_reduction(base: float, new: float) -> float:
-    return (base - new) / base * 100.0 if base else 0.0
+class HistoricalCorrector:
+    def __init__(self, rows: list[dict]):
+        self.global_median = statistics.median(r["error_days"] for r in rows)
+        self.global_late_rate = statistics.fmean(r["late"] for r in rows)
+        self.medians = [(cols, group_stat(rows, cols, "error_days", minimum)) for cols, minimum in LEVELS]
+        self.late_rates = [(cols, group_stat(rows, cols, "late", minimum, mean=True)) for cols, minimum in LEVELS]
+
+    @staticmethod
+    def _lookup(r: dict, tables, fallback):
+        for cols, table in tables:
+            key = tuple(r[c] for c in cols)
+            if key in table:
+                return table[key]
+        return fallback
+
+    def correction_days(self, r: dict) -> float:
+        return self._lookup(r, self.medians, self.global_median)
+
+    def late_risk(self, r: dict) -> float:
+        return self._lookup(r, self.late_rates, self.global_late_rate)
 
 
-def write_csv(path: Path, rows: list[dict], fields=None):
+def percentile(sorted_values: list[float], p: float) -> float:
+    if not sorted_values:
+        return float("nan")
+    pos = (len(sorted_values) - 1) * p
+    lo = math.floor(pos); hi = math.ceil(pos)
+    if lo == hi: return sorted_values[lo]
+    return sorted_values[lo] * (hi - pos) + sorted_values[hi] * (pos - lo)
+
+
+def paired_bootstrap_reduction(base_abs: list[float], new_abs: list[float], reps=2000, seed=13507):
+    rng = random.Random(seed)
+    n = len(base_abs)
+    vals = []
+    for _ in range(reps):
+        sb = sn = 0.0
+        for _j in range(n):
+            i = rng.randrange(n)
+            sb += base_abs[i]; sn += new_abs[i]
+        mb = sb / n; mn = sn / n
+        vals.append((mb - mn) / mb * 100.0)
+    vals.sort()
+    return percentile(vals, 0.025), percentile(vals, 0.975)
+
+
+def risk_bucket(scored: list[dict], fraction: float) -> dict:
+    ordered = sorted(scored, key=lambda r: (-r["late_risk"], r["order_id"]))
+    k = max(1, int(len(ordered) * fraction))
+    selected = ordered[:k]
+    late_total = sum(r["late"] for r in ordered)
+    tp = sum(r["late"] for r in selected)
+    precision = tp / k
+    recall = tp / late_total if late_total else 0.0
+    base_rate = late_total / len(ordered) if ordered else 0.0
+    leads = [(r["actual"] - r["handoff"]).total_seconds() / 3600.0 for r in selected if r["late"]]
+    return {
+        "risk_bucket": f"top_{int(fraction*100)}pct",
+        "orders_flagged": k,
+        "true_late_captured": tp,
+        "precision": precision,
+        "late_recall": recall,
+        "precision_lift_vs_base_rate": precision / base_rate if base_rate else 0.0,
+        "warning_lead_hours_mean": statistics.fmean(leads) if leads else 0.0,
+        "warning_lead_hours_median": statistics.median(leads) if leads else 0.0,
+    }
+
+
+def roc_auc(rows: list[dict]) -> float:
+    # Rank-based Mann-Whitney AUC with average ranks for score ties.
+    pairs = sorted((r["late_risk"], r["late"]) for r in rows)
+    n_pos = sum(y for _, y in pairs); n_neg = len(pairs) - n_pos
+    if not n_pos or not n_neg: return float("nan")
+    rank = 1; sum_pos_ranks = 0.0; i = 0
+    while i < len(pairs):
+        j = i + 1
+        while j < len(pairs) and pairs[j][0] == pairs[i][0]: j += 1
+        avg_rank = (rank + (rank + (j - i) - 1)) / 2.0
+        sum_pos_ranks += avg_rank * sum(y for _, y in pairs[i:j])
+        rank += j - i; i = j
+    return (sum_pos_ranks - n_pos * (n_pos + 1) / 2.0) / (n_pos * n_neg)
+
+
+def average_precision(rows: list[dict]) -> float:
+    ordered = sorted(rows, key=lambda r: (-r["late_risk"], r["order_id"]))
+    total_pos = sum(r["late"] for r in ordered)
+    if not total_pos: return 0.0
+    tp = 0; ap = 0.0
+    for i, r in enumerate(ordered, 1):
+        if r["late"]:
+            tp += 1
+            ap += tp / i
+    return ap / total_pos
+
+
+def write_csv(path: Path, rows: list[dict]):
     if not rows: return
-    if fields is None: fields = list(rows[0].keys())
     with path.open("w", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=fields, extrasaction="ignore")
+        w = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
         w.writeheader(); w.writerows(rows)
 
 
 def main():
-    manifest = acquire()
-    rows, audit = load_rows()
+    manifest = acquire_orders()
+    rows, audit = load_real_orders()
     if len(rows) < 5000:
-        raise RuntimeError(f"fewer than 5000 valid real completed orders: {len(rows)}")
+        raise RuntimeError("Real completed-order gate failed: fewer than 5,000 rows")
 
-    n = len(rows)
-    train_end = int(n * 0.70)
-    train = rows[:train_end]
-    test = rows[train_end:]
-    cal_cut = int(len(train) * 0.80)
-    threshold, threshold_table = choose_threshold(train[:cal_cut], train[cal_cut:])
+    split = int(len(rows) * 0.70)
+    train = rows[:split]
+    test = rows[split:]
+    model = HistoricalCorrector(train)
 
-    corrector = Corrector(train)
-    scored = evaluate(test, corrector)
-    cls = classification(test, corrector, threshold)
-
-    baseline_mae = statistics.fmean(r["baseline_abs_error_days"] for r in scored)
-    global_mae = statistics.fmean(r["global_abs_error_days"] for r in scored)
-    helix_mae = statistics.fmean(r["helix_abs_error_days"] for r in scored)
-    baseline_median = statistics.median(r["baseline_abs_error_days"] for r in scored)
-    helix_median = statistics.median(r["helix_abs_error_days"] for r in scored)
-    baseline_within_1 = statistics.fmean(r["baseline_abs_error_days"] <= 1 for r in scored)
-    helix_within_1 = statistics.fmean(r["helix_abs_error_days"] <= 1 for r in scored)
-    late_rate = statistics.fmean(r["late"] for r in scored)
-
-    state_groups = defaultdict(list)
-    for r in scored: state_groups[r["state"]].append(r)
-    weakness = []
-    for state, grp in sorted(state_groups.items()):
-        b = statistics.fmean(x["baseline_abs_error_days"] for x in grp)
-        h = statistics.fmean(x["helix_abs_error_days"] for x in grp)
-        weakness.append({
-            "state": state, "test_orders": len(grp), "official_mae_days": b,
-            "helixnid_mae_days": h, "error_reduction_pct": pct_reduction(b, h),
-            "late_rate_pct": statistics.fmean(x["late"] for x in grp) * 100.0,
+    scored = []
+    for r in test:
+        corr = model.correction_days(r)
+        scored.append({**r,
+            "official_abs_error_days": abs(r["error_days"]),
+            "global_abs_error_days": abs(r["error_days"] - model.global_median),
+            "helixnid_correction_days": corr,
+            "helixnid_abs_error_days": abs(r["error_days"] - corr),
+            "late_risk": model.late_risk(r),
         })
-    weakness.sort(key=lambda x: x["official_mae_days"], reverse=True)
+
+    base_abs = [r["official_abs_error_days"] for r in scored]
+    global_abs = [r["global_abs_error_days"] for r in scored]
+    helix_abs = [r["helixnid_abs_error_days"] for r in scored]
+    base_mae = statistics.fmean(base_abs)
+    global_mae = statistics.fmean(global_abs)
+    helix_mae = statistics.fmean(helix_abs)
+    reduction = (base_mae - helix_mae) / base_mae * 100.0
+    ci_low, ci_high = paired_bootstrap_reduction(base_abs, helix_abs)
+
+    base_within1 = statistics.fmean(x <= 1 for x in base_abs)
+    helix_within1 = statistics.fmean(x <= 1 for x in helix_abs)
+    base_within2 = statistics.fmean(x <= 2 for x in base_abs)
+    helix_within2 = statistics.fmean(x <= 2 for x in helix_abs)
+    late_rate = statistics.fmean(r["late"] for r in scored)
+    risk_rows = [risk_bucket(scored, f) for f in (0.05, 0.10, 0.20)]
 
     comparison = [
-        {"metric": "Delivery-date MAE (days)", "official_estimate": baseline_mae, "global_historical_correction": global_mae, "helixnid": helix_mae, "helixnid_improvement_pct": pct_reduction(baseline_mae, helix_mae)},
-        {"metric": "Median absolute delivery-date error (days)", "official_estimate": baseline_median, "global_historical_correction": "", "helixnid": helix_median, "helixnid_improvement_pct": pct_reduction(baseline_median, helix_median)},
-        {"metric": "Within ±1 day rate", "official_estimate": baseline_within_1, "global_historical_correction": "", "helixnid": helix_within_1, "helixnid_improvement_pct": (helix_within_1 - baseline_within_1) * 100.0},
+        {"metric": "delivery_date_mae_days", "official": base_mae, "global_history": global_mae, "helixnid": helix_mae, "helixnid_change": reduction},
+        {"metric": "median_absolute_error_days", "official": statistics.median(base_abs), "global_history": "", "helixnid": statistics.median(helix_abs), "helixnid_change": ""},
+        {"metric": "within_1_day_rate", "official": base_within1, "global_history": "", "helixnid": helix_within1, "helixnid_change": helix_within1 - base_within1},
+        {"metric": "within_2_day_rate", "official": base_within2, "global_history": "", "helixnid": helix_within2, "helixnid_change": helix_within2 - base_within2},
     ]
+    write_csv(REPORTS / "comparison_table.csv", comparison)
+    write_csv(REPORTS / "late_risk_table.csv", risk_rows)
 
-    certificate = {
-        "certificate": "HELIXNID_CARRIER_PRECISION_METER_OLIST_REAL_V1",
-        "status": "PASS",
-        "generated_utc": now_utc(),
-        "dataset": "Brazilian E-Commerce Public Dataset by Olist",
-        "source_url": URL,
-        "archive_sha256": manifest["archive_sha256"],
+    validation = {
+        **audit,
         "synthetic_rows_used": 0,
-        "raw_orders": audit["raw_orders"],
-        "valid_real_completed_orders": len(rows),
         "chronological_train_orders": len(train),
         "chronological_test_orders": len(test),
         "train_first_purchase": train[0]["purchase"].isoformat(),
         "train_last_purchase": train[-1]["purchase"].isoformat(),
         "test_first_purchase": test[0]["purchase"].isoformat(),
         "test_last_purchase": test[-1]["purchase"].isoformat(),
-        "official_delivery_date_mae_days": baseline_mae,
+        "orders_sha256_verified": manifest["identity_verified"],
+        "test_target_used_as_feature": False,
+    }
+    (REPORTS / "data_validation_report.json").write_text(json.dumps(validation, indent=2))
+
+    certificate = {
+        "certificate": "HELIXNID_CARRIER_PRECISION_METER_OLIST_REAL_V1",
+        "status": "PASS",
+        "generated_utc": now_utc(),
+        "dataset": "Brazilian E-Commerce Public Dataset by Olist",
+        "orders_sha256": ORDERS_SHA256,
+        "synthetic_rows_used": 0,
+        "valid_real_completed_orders": len(rows),
+        "chronological_train_orders": len(train),
+        "chronological_test_orders": len(test),
+        "official_delivery_date_mae_days": base_mae,
         "global_historical_correction_mae_days": global_mae,
         "helixnid_corrected_mae_days": helix_mae,
-        "eta_error_reduction_pct": pct_reduction(baseline_mae, helix_mae),
-        "official_within_1_day_rate": baseline_within_1,
-        "helixnid_within_1_day_rate": helix_within_1,
+        "eta_error_reduction_pct": reduction,
+        "eta_error_reduction_bootstrap_95pct": [ci_low, ci_high],
+        "official_median_absolute_error_days": statistics.median(base_abs),
+        "helixnid_median_absolute_error_days": statistics.median(helix_abs),
+        "official_within_1_day_rate": base_within1,
+        "helixnid_within_1_day_rate": helix_within1,
+        "official_within_2_day_rate": base_within2,
+        "helixnid_within_2_day_rate": helix_within2,
         "test_late_rate": late_rate,
-        "late_risk": cls,
-        "claim_boundary": "Olist exposes an estimated delivery DATE, not carrier identity or a guaranteed hour-level carrier ETA. Results therefore measure real delivery-promise date correction at carrier-handoff time, not per-carrier FedEx/UPS performance.",
+        "late_risk_roc_auc": roc_auc(scored),
+        "late_risk_average_precision": average_precision(scored),
+        "risk_triage": risk_rows,
+        "claim_boundary": "Olist provides a customer-facing estimated delivery DATE and actual delivery timestamp, but no FedEx/UPS-style carrier identity. Results measure real delivery-promise correction at carrier handoff, not per-carrier brand performance.",
     }
+    (REPORTS / "release_certificate.json").write_text(json.dumps(certificate, indent=2))
 
-    write_csv(REPORTS / "comparison_table.csv", comparison)
-    write_csv(REPORTS / "weakness_by_state.csv", weakness)
-    write_csv(REPORTS / "late_risk_threshold_calibration.csv", threshold_table)
-    write_csv(
-        REPORTS / "test_order_scores.csv",
-        scored,
-        fields=["order_id", "state", "purchase", "handoff", "actual", "estimate", "lead_bucket", "handoff_bucket", "error_days", "baseline_abs_error_days", "helix_correction_days", "helix_error_days", "helix_abs_error_days", "late", "late_risk"],
-    )
-    (REPORTS / "data_validation_report.json").write_text(json.dumps({**audit, "valid_real_completed_orders": len(rows), "synthetic_rows": 0, "chronological_split": True}, indent=2, default=str))
-    (REPORTS / "release_certificate.json").write_text(json.dumps(certificate, indent=2, default=str))
-
-    report = f"""# HELIXNID Carrier Precision Meter — Real Olist Empirical Run
+    report = f"""# HELIXNID Carrier Precision Meter — Real Olist Run
 
 - Status: **PASS**
-- Real valid completed orders: **{len(rows):,}**
-- Chronological training orders: **{len(train):,}**
-- Chronological held-out test orders: **{len(test):,}**
+- Raw orders: **{audit['raw_orders']:,}**
+- Valid real completed deliveries: **{len(rows):,}**
+- Historical training orders: **{len(train):,}**
+- Held-out future test orders: **{len(test):,}**
 - Synthetic rows: **0**
 
-## Delivery promise precision
+## ETA / delivery-promise precision
 
-- Official estimate MAE: **{baseline_mae:.3f} days**
+- Official estimate MAE: **{base_mae:.3f} days**
 - Global historical correction MAE: **{global_mae:.3f} days**
 - HELIXNID corrected MAE: **{helix_mae:.3f} days**
-- HELIXNID ETA error reduction: **{pct_reduction(baseline_mae, helix_mae):.2f}%**
-- Official within ±1 day: **{baseline_within_1*100:.2f}%**
-- HELIXNID within ±1 day: **{helix_within_1*100:.2f}%**
+- HELIXNID error reduction: **{reduction:.2f}%**
+- Paired bootstrap 95% range: **{ci_low:.2f}% to {ci_high:.2f}%**
+- Official median absolute error: **{statistics.median(base_abs):.1f} days**
+- HELIXNID median absolute error: **{statistics.median(helix_abs):.1f} days**
+- Official within ±1 day: **{base_within1*100:.2f}%**
+- HELIXNID within ±1 day: **{helix_within1*100:.2f}%**
+- Official within ±2 days: **{base_within2*100:.2f}%**
+- HELIXNID within ±2 days: **{helix_within2*100:.2f}%**
 
-## Late-risk signal
+## Late-risk triage at carrier handoff
 
-- Test late rate: **{late_rate*100:.2f}%**
-- Training-selected risk threshold: **{threshold:.2f}**
-- Late-risk recall: **{cls['recall']*100:.2f}%**
-- Late-risk precision: **{cls['precision']*100:.2f}%**
-- Late-risk F1: **{cls['f1']:.4f}**
-- Mean warning lead for true positives: **{cls['warning_lead_hours_mean_true_positive']:.2f} hours**
-- Median warning lead for true positives: **{cls['warning_lead_hours_median_true_positive']:.2f} hours**
+- Future test late rate: **{late_rate*100:.2f}%**
+- Risk ROC-AUC: **{roc_auc(scored):.4f}**
+- Risk average precision: **{average_precision(scored):.4f}**
+- Top 5% risk bucket captures **{risk_rows[0]['late_recall']*100:.2f}%** of late deliveries at **{risk_rows[0]['precision']*100:.2f}%** precision.
+- Top 10% risk bucket captures **{risk_rows[1]['late_recall']*100:.2f}%** of late deliveries at **{risk_rows[1]['precision']*100:.2f}%** precision.
+- Top 10% median warning lead: **{risk_rows[1]['warning_lead_hours_median']:.2f} hours**.
 
 ## Boundary
 
-Olist supplies a customer-facing estimated delivery DATE and actual delivery timestamp. It does not identify FedEx/UPS/etc. These numbers are real delivery-promise correction results, not per-carrier claims.
+The Olist promise is a delivery **date**, so the primary error metric is days. Carrier brand identity is not present; no FedEx/UPS brand claim is made from this dataset.
 """
     (REPORTS / "empirical_run_report.md").write_text(report)
 
     ledger = f"""# Dataset Source Ledger — Olist
 
-- Source: Brazilian E-Commerce Public Dataset by Olist
-- Download endpoint: `{URL}`
-- Archive bytes: `{manifest['archive_bytes']}`
-- Archive SHA256: `{manifest['archive_sha256']}`
-- Orders SHA256: `{manifest['files']['olist_orders_dataset.csv']['sha256']}`
-- Customers SHA256: `{manifest['files']['olist_customers_dataset.csv']['sha256']}`
-- Synthetic rows used: `0`
+- Canonical dataset: Brazilian E-Commerce Public Dataset by Olist
+- Canonical download: `{KAGGLE_URL}`
+- Verified orders bytes: `{ORDERS_BYTES}`
+- Verified orders SHA256: `{ORDERS_SHA256}`
+- Real rows only: `true`
+- Synthetic claim rows: `0`
 """
     (REPORTS / "dataset_source_ledger.md").write_text(ledger)
 
@@ -421,7 +448,7 @@ Olist supplies a customer-facing estimated delivery DATE and actual delivery tim
         if p.is_file() and p.name != "artifact_hashes.csv":
             artifacts.append({"file": p.name, "bytes": p.stat().st_size, "sha256": sha256(p)})
     write_csv(REPORTS / "artifact_hashes.csv", artifacts)
-    print(json.dumps(certificate, indent=2, default=str))
+    print(json.dumps(certificate, indent=2))
 
 
 if __name__ == "__main__":
