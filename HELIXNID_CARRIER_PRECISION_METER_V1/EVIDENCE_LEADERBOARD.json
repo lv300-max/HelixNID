@@ -1,0 +1,67 @@
+{
+  "release": "HELIXNID_CARRIER_PRECISION_METER_V1",
+  "generated_from_real_claim_rows_only": true,
+  "synthetic_empirical_rows": 0,
+  "lanes": [
+    {
+      "rank_scope": "primary_eta",
+      "lane": "Olist delivery-promise correction",
+      "status": "LOCKED",
+      "real_rows": 96281,
+      "held_out_rows": 28885,
+      "official_mae_days": 13.4462870001731,
+      "helixnid_mae_days": 4.116081010905314,
+      "relative_error_reduction_pct": 69.38871667061453,
+      "bootstrap_95pct": [68.97472492737373, 69.76851719419476]
+    },
+    {
+      "rank_scope": "robustness",
+      "lane": "Olist chronological rolling and monthly holdouts",
+      "status": "LOCKED",
+      "tests": 23,
+      "non_segment_tests": 17,
+      "minimum_non_segment_error_reduction_pct": 25.718055768881687,
+      "median_non_segment_error_reduction_pct": 63.33000902408644,
+      "maximum_non_segment_error_reduction_pct": 74.95477522865983,
+      "documented_failure_region": "late_only stress slice: -99.38382254089177%"
+    },
+    {
+      "rank_scope": "baseline_battle",
+      "lane": "Ten-model future-holdout comparison",
+      "status": "LOCKED",
+      "held_out_rows": 28885,
+      "helixnid_rank": 3,
+      "models_compared": 10,
+      "winner": "XGBoost",
+      "winner_mae_days": 3.853526618585161,
+      "helixnid_mae_days": 4.116081010905314,
+      "gap_to_winner_mae_days": 0.262554392320153
+    },
+    {
+      "rank_scope": "historical_replay",
+      "lane": "Olist future-shipment replay",
+      "status": "LOCKED",
+      "shipments_replayed": 28885,
+      "shipments_improved": 24590,
+      "improved_rate": 0.8513069066989787,
+      "total_absolute_error_days_removed": 269503.0
+    },
+    {
+      "rank_scope": "external_timing",
+      "lane": "LaDe-D Jilin operational timing replication",
+      "status": "RUNNER_BUILT_DATA_ACQUISITION_GATE",
+      "public_source": "Cainiao-AI/LaDe",
+      "source_is_real_industry_data": true,
+      "claim_boundary": "Operational accept-to-delivery timing, not customer promised ETA."
+    },
+    {
+      "rank_scope": "operational_routing",
+      "lane": "Amazon last-mile route sequence benchmark",
+      "status": "RUNNER_BUILT_DATA_ACQUISITION_GATE",
+      "training_routes_expected": 6112,
+      "evaluation_routes_expected": 3072,
+      "source_is_real_operational_data": true,
+      "claim_boundary": "Route-order precision, not delivery-promise ETA."
+    }
+  ]
+}
