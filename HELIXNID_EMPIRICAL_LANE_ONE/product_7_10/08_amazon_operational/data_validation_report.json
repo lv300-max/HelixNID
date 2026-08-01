@@ -1,0 +1,17 @@
+{
+  "source_is_real_operational_data": true,
+  "synthetic_rows_used_for_claims": 0,
+  "training_routes": 6112,
+  "evaluation_routes": 3052,
+  "evaluation_stops_including_station": 433231,
+  "all_eval_stop_sets_match": true,
+  "all_eval_routes_start_at_station": true,
+  "download_files_size_verified": true,
+  "tuning_routes": 500,
+  "best_weights": [1.0, 1.0, 0.5, 0.15, 0.1],
+  "published_evaluation_routes": 3072,
+  "usable_paired_evaluation_routes": 3052,
+  "published_count_gap_routes": 20,
+  "unmatched_ids_inside_downloaded_files": 0,
+  "usable_intersection_gate": "PASS"
+}
