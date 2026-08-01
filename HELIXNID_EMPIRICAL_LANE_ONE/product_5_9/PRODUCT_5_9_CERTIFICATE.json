@@ -1,0 +1,78 @@
+{
+  "certificate": "HELIXNID_PRODUCT_PHASES_5_9_V1",
+  "status": "BUILT_AND_INTEGRATED",
+  "product": "HELIXNID Precision Engine",
+  "api_version": "2.0.0",
+  "synthetic_empirical_rows": 0,
+  "phases": {
+    "05_carrier_labelled_evidence": {
+      "status": "COMPLETE_INGESTION_AND_CONNECTOR_LAYER",
+      "json_import": true,
+      "csv_import": true,
+      "chronology_validation": true,
+      "provider_normalizers": ["FedEx", "USPS", "Pakket", "generic"],
+      "public_carrier_evidence": "USPS FY2026 Q1 official aggregate",
+      "carrier_specific_model_minimum_rows": 5000,
+      "row_level_carrier_model_state": "DATA_ACCUMULATION_GATE"
+    },
+    "06_live_tracking_intelligence": {
+      "status": "COMPLETE",
+      "tracking_event_ingestion": true,
+      "provider_webhooks": true,
+      "live_eta": true,
+      "live_late_probability": true,
+      "live_risk_band": true,
+      "scan_silence": true,
+      "auditable_rule_reasons": true
+    },
+    "07_enterprise_measurement": {
+      "status": "COMPLETE",
+      "summary": true,
+      "carrier_breakdown": true,
+      "service_breakdown": true,
+      "destination_breakdown": true,
+      "live_alerts": true,
+      "enterprise_dashboard": true
+    },
+    "08_financial_measurement": {
+      "status": "COMPLETE",
+      "customer_input_only": true,
+      "support_value": true,
+      "refund_replacement_value": true,
+      "late_compensation_value": true,
+      "guaranteed_savings_claim": false
+    },
+    "09_general_precision_engine": {
+      "status": "COMPLETE",
+      "domain_neutral_fit": true,
+      "hierarchical_context_correction": true,
+      "single_record_scoring": true,
+      "chronological_replay": true,
+      "model_hash": true
+    }
+  },
+  "api_endpoints_added": [
+    "/tracking-event",
+    "/tracking-events/batch",
+    "/shipment/{shipment_id}/live",
+    "/carrier-webhook/{provider}",
+    "/carrier-evidence/import",
+    "/carrier-evidence/import-csv",
+    "/carrier-evidence/status",
+    "/enterprise/summary",
+    "/enterprise/breakdown",
+    "/enterprise/alerts",
+    "/financial-value",
+    "/precision/fit",
+    "/precision/score",
+    "/precision/replay"
+  ],
+  "deployment": {
+    "entrypoint": "app_v2:app",
+    "docker": true,
+    "dashboard": "product_5_6/06_dashboard/index.html",
+    "enterprise_dashboard": "product_5_6/06_dashboard/enterprise.html",
+    "persistent_database": "SQLite"
+  },
+  "claim_boundary": "The product capabilities are complete. The locked 69.39% Olist result remains the primary row-level empirical claim. USPS evidence is official aggregate performance only. FedEx/USPS carrier-specific row-level accuracy claims remain gated until at least 5,000 valid completed carrier-labelled shipments retain both the original promise and actual delivery. Live event adjustments are operational rules until replayed against such carrier-labelled evidence."
+}
