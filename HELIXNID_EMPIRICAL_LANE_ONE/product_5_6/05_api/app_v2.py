@@ -19,6 +19,14 @@ import live_intelligence  # noqa: E402
 import official_connectors  # noqa: E402
 
 
+@app.get("/carrier-webhook/providers")
+def carrier_webhook_providers():
+    return {
+        "providers": ["fedex", "usps", "generic", "pakket"],
+        "boundary": "Payloads must come from authorized carrier integrations. HELIXNID does not bypass carrier authentication.",
+    }
+
+
 @app.post("/carrier-webhook/{provider}")
 def carrier_webhook(provider: str, payload: dict[str, Any]):
     """Normalize an authorized FedEx, USPS, Pakket, or generic webhook payload."""
@@ -39,12 +47,4 @@ def carrier_webhook(provider: str, payload: dict[str, Any]):
         "states_updated": len(states),
         "errors": errors,
         "states": states,
-    }
-
-
-@app.get("/carrier-webhook/providers")
-def carrier_webhook_providers():
-    return {
-        "providers": ["fedex", "usps", "generic", "pakket"],
-        "boundary": "Payloads must come from authorized carrier integrations. HELIXNID does not bypass carrier authentication.",
     }
