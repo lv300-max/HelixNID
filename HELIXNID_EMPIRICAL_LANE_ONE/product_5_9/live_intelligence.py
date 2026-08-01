@@ -158,13 +158,20 @@ def calculate_live_state(
     p = float(base.get("late_probability", 0.0))
     reasons: list[dict[str, Any]] = []
     status_lower = latest["status"].lower()
+    delivered = any(word in status_lower for word in DELIVERED_WORDS)
     all_text = " ".join(
         f"{e.get('status','')} {e.get('exception_code','')}".lower() for e in events
     )
 
-    if any(word in status_lower for word in DELIVERED_WORDS):
+    original_eta = parse_dt(base["original_eta"])
+    base_corrected = parse_dt(base["helixnid_corrected_eta"])
+    live_corrected = base_corrected
+
+    if delivered:
         p = 0.0
-        reasons.append({"rule": "delivered", "delta": "set_zero"})
+        silence = 0.0
+        live_corrected = latest_dt
+        reasons.append({"rule": "delivered_final", "delta": "set_zero", "delivery_timestamp": latest_dt.isoformat()})
     else:
         if any(word in all_text for word in EXCEPTION_WORDS):
             p += 0.35
@@ -179,16 +186,13 @@ def calculate_live_state(
             p -= 0.05
             reasons.append({"rule": "out_for_delivery", "delta": -0.05})
 
-    original_eta = parse_dt(base["original_eta"])
-    base_corrected = parse_dt(base["helixnid_corrected_eta"])
-    live_corrected = base_corrected
-    estimate_changes = [e["estimated_delivery"] for e in events if e.get("estimated_delivery")]
-    if estimate_changes:
-        carrier_estimate = parse_dt(estimate_changes[-1])
-        if carrier_estimate > original_eta:
-            p += 0.25
-            reasons.append({"rule": "carrier_eta_moved_later", "delta": 0.25, "carrier_eta": carrier_estimate.isoformat()})
-        live_corrected = max(base_corrected, carrier_estimate)
+        estimate_changes = [e["estimated_delivery"] for e in events if e.get("estimated_delivery")]
+        if estimate_changes:
+            carrier_estimate = parse_dt(estimate_changes[-1])
+            if carrier_estimate > original_eta:
+                p += 0.25
+                reasons.append({"rule": "carrier_eta_moved_later", "delta": 0.25, "carrier_eta": carrier_estimate.isoformat()})
+            live_corrected = max(base_corrected, carrier_estimate)
 
     p = min(0.99, max(0.0, p))
     state = {
@@ -205,6 +209,7 @@ def calculate_live_state(
         "latest_event_timestamp": latest["event_timestamp"],
         "scan_silence_hours": silence,
         "event_count": len(events),
+        "delivered": delivered,
         "operational_reasons": reasons,
         "evidence_boundary": "Live adjustments are auditable operational rules layered on the locked empirical base model; no additional accuracy claim is made without carrier-labelled replay.",
     }
