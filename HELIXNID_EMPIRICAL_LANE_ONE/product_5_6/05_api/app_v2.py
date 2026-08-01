@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Final HELIXNID API surface with official carrier webhook normalizers."""
+"""Final HELIXNID API surface with offline model and carrier webhooks."""
 from __future__ import annotations
 
 import sys
@@ -13,6 +13,14 @@ LANE_ROOT = HERE.parents[2]
 EXT = LANE_ROOT / "product_5_9"
 if str(EXT) not in sys.path:
     sys.path.insert(0, str(EXT))
+
+# Materialize the exact verified trained model before importing the base API. This makes
+# first startup deterministic and offline; no network download or retraining is required.
+import embedded_carrier_model  # noqa: E402
+
+EMBEDDED_MODEL_PATH = LANE_ROOT / "product_1_4" / "04_scoring_engine" / "carrier_precision_model_v1.json"
+if not EMBEDDED_MODEL_PATH.exists():
+    embedded_carrier_model.write_model(EMBEDDED_MODEL_PATH)
 
 from app import DB_PATH, app, raw_score  # noqa: E402
 import live_intelligence  # noqa: E402
