@@ -14,44 +14,41 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  real-empirical-benchmarks:
+  olist-real-eta:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Acquire real Olist orders and run Carrier Precision benchmark
+        run: python HELIXNID_EMPIRICAL_LANE_ONE/src/helixnid_olist_eta_benchmark.py
+      - name: Show Olist empirical certificate
+        run: cat HELIXNID_EMPIRICAL_LANE_ONE/reports_olist_eta/release_certificate.json
+      - name: Preserve Olist evidence package
+        uses: actions/upload-artifact@v4
+        with:
+          name: helixnid-olist-real-eta
+          path: HELIXNID_EMPIRICAL_LANE_ONE/reports_olist_eta
+
+  amazon-real-route:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
-      - name: Checkout HELIXNID
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
-      - name: Acquire real Olist orders and run delivery-promise benchmark
-        run: python HELIXNID_EMPIRICAL_LANE_ONE/src/helixnid_olist_eta_benchmark.py
-
-      - name: Show Olist Carrier Precision certificate
-        run: cat HELIXNID_EMPIRICAL_LANE_ONE/reports_olist_eta/release_certificate.json
-
       - name: Acquire real Amazon routes and run route benchmark
         run: python HELIXNID_EMPIRICAL_LANE_ONE/src/helixnid_last_mile_benchmark.py
-
-      - name: Show Amazon route certificate
+      - name: Show Amazon empirical certificate
         run: cat HELIXNID_EMPIRICAL_LANE_ONE/reports/release_certificate.json
-
-      - name: Commit real evidence package on main push
-        if: github.event_name == 'push'
-        run: |
-          git config user.name "HELIXNID Empirical Bot"
-          git config user.email "actions@users.noreply.github.com"
-          git add HELIXNID_EMPIRICAL_LANE_ONE/reports HELIXNID_EMPIRICAL_LANE_ONE/reports_olist_eta
-          if git diff --cached --quiet; then
-            echo "No report changes"
-          else
-            git commit -m "Lock Lane One real Olist and Amazon empirical results"
-            git push
-          fi
+      - name: Preserve Amazon evidence package
+        uses: actions/upload-artifact@v4
+        with:
+          name: helixnid-amazon-real-route
+          path: HELIXNID_EMPIRICAL_LANE_ONE/reports
