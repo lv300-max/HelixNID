@@ -1,0 +1,56 @@
+{
+  "certificate": "HELIXNID_LANE_ONE_A_REAL_LAST_MILE_BENCHMARK_V2",
+  "status": "PASS",
+  "generated_utc": "2026-08-01T01:28:09.788546+00:00",
+  "dataset": "2021 Amazon Last Mile Routing Research Challenge",
+  "training_routes": 6112,
+  "evaluation_routes": 3052,
+  "evaluation_stops_including_station": 433231,
+  "synthetic_rows": 0,
+  "baseline": "geographic nearest-neighbor",
+  "helixnid_model": "station/zone historical transition pressure + geographic pressure + deterministic HELIX tie-break",
+  "best_weights": [1.0, 1.0, 0.5, 0.15, 0.1],
+  "metrics": {
+    "geo": {
+      "edge_recall": 0.24805547244902235,
+      "edge_recall_median": 0.24583217560433454,
+      "pair_order_accuracy": 0.5014062852568383,
+      "pair_order_accuracy_median": 0.504263563221514,
+      "rank_corr": 0.0046474933689644,
+      "rank_corr_median": 0.015676655002715256,
+      "norm_pos_mae": 0.3214488557259445,
+      "norm_pos_mae_median": 0.3308465949303994
+    },
+    "helixnid": {
+      "edge_recall": 0.29643675094206673,
+      "edge_recall_median": 0.29235267656320285,
+      "pair_order_accuracy": 0.48469305899799797,
+      "pair_order_accuracy_median": 0.4624665478634453,
+      "rank_corr": -0.12946623811563893,
+      "rank_corr_median": -0.2444824053246233,
+      "norm_pos_mae": 0.34033314482479177,
+      "norm_pos_mae_median": 0.3857668080344877
+    },
+    "wins": {
+      "edge_win_rate": 0.7306684141546527,
+      "pair_win_rate": 0.450524246395806,
+      "rank_win_rate": 0.3872870249017038,
+      "position_win_rate": 0.4069462647444299
+    }
+  },
+  "comparison": [
+    {"metric": "Adjacent-edge recall", "direction": "higher", "geo_baseline": 0.24805547244902235, "helixnid": 0.29643675094206673, "relative_improvement_pct": 19.504217349200864},
+    {"metric": "Pair-order accuracy", "direction": "higher", "geo_baseline": 0.5014062852568383, "helixnid": 0.48469305899799797, "relative_improvement_pct": -3.3332701943054412},
+    {"metric": "Spearman rank correlation", "direction": "higher", "geo_baseline": 0.0046474933689644, "helixnid": -0.12946623811563893, "relative_improvement_pct": -2885.7218469681834},
+    {"metric": "Normalized position MAE", "direction": "lower", "geo_baseline": 0.3214488557259445, "helixnid": 0.34033314482479177, "relative_improvement_pct": -5.874741428523645}
+  ],
+  "elapsed_seconds": 257.77926206588745,
+  "published_evaluation_routes": 3072,
+  "usable_paired_evaluation_routes": 3052,
+  "published_count_gap_routes": 20,
+  "unmatched_ids_inside_downloaded_files": 0,
+  "evaluation_intersection_audit": "evaluation_intersection_audit.json",
+  "workflow_artifact_id": 8811155959,
+  "workflow_artifact_zip_sha256": "d07ed30ad42c6a25ee7d59d1eabc6174d48270db03a2947c4246b30b4bb01deb",
+  "claim_boundary": "This benchmark measures route/stop-order precision on every paired route in the downloaded Amazon evaluation files. Both downloaded files contain the same 3,052 route IDs with zero internal unmatched IDs. This is 20 fewer than the published 3,072-route count. The benchmark does not claim carrier ETA improvement."
+}
