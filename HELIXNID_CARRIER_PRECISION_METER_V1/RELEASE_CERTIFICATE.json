@@ -1,8 +1,7 @@
 {
   "certificate": "HELIXNID_CARRIER_PRECISION_METER_V1_RELEASE",
-  "status": "PRODUCT_COMPLETE_EXECUTION_GATES",
+  "status": "DEPLOYABLE_PRIMARY_EVIDENCE_LOCKED_EXTERNAL_EXECUTION_GATES",
   "product": "HELIXNID Carrier Precision Meter V1",
-  "components_built": 10,
   "synthetic_empirical_rows": 0,
   "primary_eta_evidence": {
     "dataset": "Brazilian E-Commerce Public Dataset by Olist",
@@ -14,18 +13,61 @@
     "eta_error_reduction_pct": 69.38871667061453,
     "eta_error_reduction_bootstrap_95pct": [68.97472492737373, 69.76851719419476]
   },
+  "robustness_evidence": {
+    "status": "LOCKED_PASS",
+    "tests_run": 23,
+    "non_segment_future_tests": 17,
+    "minimum_non_segment_error_reduction_pct": 25.718055768881687,
+    "median_non_segment_error_reduction_pct": 63.33000902408644,
+    "maximum_non_segment_error_reduction_pct": 74.95477522865983,
+    "documented_failure_region": {
+      "slice": "late_only",
+      "error_reduction_pct": -99.38382254089177
+    }
+  },
+  "baseline_battle": {
+    "status": "LOCKED",
+    "models_compared": 10,
+    "helixnid_rank": 3,
+    "helixnid_mae_days": 4.116081010905314,
+    "winner": "XGBoost",
+    "winner_mae_days": 3.853526618585161,
+    "gap_to_winner_mae_days": 0.262554392320153
+  },
+  "historical_replay": {
+    "status": "LOCKED_PASS",
+    "future_shipments_replayed": 28885,
+    "shipments_improved": 24590,
+    "shipments_worsened": 3322,
+    "shipments_tied": 973,
+    "improved_rate": 0.8513069066989787,
+    "total_absolute_error_days_removed": 269503.0
+  },
+  "deployment": {
+    "status": "BUILT",
+    "api": "FastAPI v1.1",
+    "dashboard": "static live dashboard",
+    "persistence": "SQLite volume",
+    "batch_json": true,
+    "batch_csv": true,
+    "csv_export": true,
+    "docker_compose": true,
+    "certificate_endpoint": true,
+    "health_endpoint": true
+  },
   "build_state": {
-    "01_robustness": "BUILT",
-    "02_ten_model_baseline_battle": "BUILT",
+    "01_robustness": "EXECUTED_LOCKED_PASS",
+    "02_ten_model_baseline_battle": "EXECUTED_LOCKED_HELIXNID_RANK_3_OF_10",
     "03_business_value": "BUILT",
     "04_scoring_engine": "BUILT",
-    "05_api": "BUILT",
+    "05_api": "DEPLOYMENT_HARDENED",
     "06_dashboard": "BUILT",
-    "07_lade_external_replication": "BUILT_RUNNER_PENDING_CERTIFICATE",
-    "08_amazon_operational_benchmark": "BUILT_RUNNER_PENDING_CERTIFICATE",
+    "07_lade_external_replication": "RUNNER_BUILT_DATA_ACQUISITION_GATE",
+    "08_amazon_operational_benchmark": "RUNNER_BUILT_DATA_ACQUISITION_GATE",
     "09_executive_release_package": "BUILT",
-    "10_master_certificate": "BUILT"
+    "10_master_certificate": "UPDATED",
+    "historical_replay_extension": "EXECUTED_LOCKED_PASS"
   },
   "final_workflow": ".github/workflows/helixnid_carrier_precision_final_release.yml",
-  "claim_boundary": "The 69.39% figure is the locked Olist customer-promise correction result. LaDe is an independent operational timing replication and Amazon is a route-sequence benchmark. Carrier-brand-specific ETA claims require carrier-labelled completed shipment evidence."
+  "claim_boundary": "The 69.39% figure is the locked Olist customer-promise correction result. The robustness and ten-model comparisons are now executed on the same verified Olist source. LaDe and Amazon remain separate external operational lanes whose runners are built but whose certificates are not claimed until those public datasets execute in an environment that can acquire them. Carrier-brand-specific ETA claims require carrier-labelled completed shipment evidence."
 }
