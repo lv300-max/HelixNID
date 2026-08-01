@@ -1,0 +1,61 @@
+{
+  "certificate": "HELIXNID_CARRIER_PRECISION_METER_OLIST_REAL_V1",
+  "status": "PASS",
+  "generated_utc": "2026-08-01T00:15:47.001585+00:00",
+  "dataset": "Brazilian E-Commerce Public Dataset by Olist",
+  "orders_sha256": "8df58ef3d2d7e9944010f7beecd9b75367f5588ec6e3c91cec19ae3345ef9ecf",
+  "synthetic_rows_used": 0,
+  "valid_real_completed_orders": 96281,
+  "chronological_train_orders": 67396,
+  "chronological_test_orders": 28885,
+  "official_delivery_date_mae_days": 13.4462870001731,
+  "global_historical_correction_mae_days": 7.1038255149731695,
+  "helixnid_corrected_mae_days": 4.116081010905314,
+  "eta_error_reduction_pct": 69.38871667061453,
+  "eta_error_reduction_bootstrap_95pct": [
+    68.97472492737373,
+    69.76851719419476
+  ],
+  "official_median_absolute_error_days": 13.0,
+  "helixnid_median_absolute_error_days": 3.0,
+  "official_within_1_day_rate": 0.04542149904794876,
+  "helixnid_within_1_day_rate": 0.3018175523628181,
+  "official_within_2_day_rate": 0.0726674744677168,
+  "helixnid_within_2_day_rate": 0.4540765102994634,
+  "test_late_rate": 0.04317119612255496,
+  "late_risk_roc_auc": 0.7283123609841129,
+  "late_risk_average_precision": 0.3173843155654146,
+  "risk_triage": [
+    {
+      "risk_bucket": "top_5pct",
+      "orders_flagged": 1444,
+      "true_late_captured": 415,
+      "precision": 0.2873961218836565,
+      "late_recall": 0.33279871692060947,
+      "precision_lift_vs_base_rate": 6.65712668854003,
+      "warning_lead_hours_mean": 137.33565261044177,
+      "warning_lead_hours_median": 99.12444444444445
+    },
+    {
+      "risk_bucket": "top_10pct",
+      "orders_flagged": 2888,
+      "true_late_captured": 535,
+      "precision": 0.18524930747922438,
+      "late_recall": 0.4290296712109062,
+      "precision_lift_vs_base_rate": 4.291039492010743,
+      "warning_lead_hours_mean": 192.6887606438214,
+      "warning_lead_hours_median": 127.12694444444445
+    },
+    {
+      "risk_bucket": "top_20pct",
+      "orders_flagged": 5777,
+      "true_late_captured": 681,
+      "precision": 0.11788125324562922,
+      "late_recall": 0.5461106655974338,
+      "precision_lift_vs_base_rate": 2.730553327987169,
+      "warning_lead_hours_mean": 280.7384381628324,
+      "warning_lead_hours_median": 167.5638888888889
+    }
+  ],
+  "claim_boundary": "Olist provides a customer-facing estimated delivery DATE and actual delivery timestamp, but no FedEx/UPS-style carrier identity. Results measure real delivery-promise correction at carrier handoff, not per-carrier brand performance."
+}
