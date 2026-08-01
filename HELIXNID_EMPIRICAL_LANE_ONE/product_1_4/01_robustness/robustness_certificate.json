@@ -1,0 +1,40 @@
+{
+  "certificate": "HELIXNID_CARRIER_PRECISION_ROBUSTNESS_V1",
+  "status": "PASS",
+  "dataset_sha256": "8df58ef3d2d7e9944010f7beecd9b75367f5588ec6e3c91cec19ae3345ef9ecf",
+  "synthetic_rows": 0,
+  "valid_real_completed_orders": 96281,
+  "tests_run": 23,
+  "non_segment_tests": 17,
+  "minimum_non_segment_error_reduction_pct": 25.718055768881687,
+  "median_non_segment_error_reduction_pct": 63.33000902408644,
+  "maximum_non_segment_error_reduction_pct": 74.95477522865983,
+  "minimum_all_tests_error_reduction_pct": -99.38382254089177,
+  "stress_failure_region": {
+    "test": "late_only",
+    "test_rows": 1247,
+    "official_mae_days": 7.157979149959904,
+    "helixnid_mae_days": 14.271852445870088,
+    "error_reduction_pct": -99.38382254089177,
+    "interpretation": "Documented stress slice: conditioning evaluation on shipments already known to finish late reverses the aggregate advantage. This slice is retained, not excluded."
+  },
+  "non_segment_tests": [
+    {"test":"chronological_50_50","train_rows":48140,"test_rows":48141,"official_mae_days":12.73964,"helixnid_mae_days":5.127012,"error_reduction_pct":59.755437},
+    {"test":"chronological_60_40","train_rows":57768,"test_rows":38513,"official_mae_days":12.861657,"helixnid_mae_days":4.716368,"error_reduction_pct":63.330009},
+    {"test":"chronological_70_30","train_rows":67396,"test_rows":28885,"official_mae_days":13.446287,"helixnid_mae_days":4.116081,"error_reduction_pct":69.388717},
+    {"test":"chronological_80_20","train_rows":77024,"test_rows":19257,"official_mae_days":13.810147,"helixnid_mae_days":3.815781,"error_reduction_pct":72.369727},
+    {"test":"rolling_40_to_50","train_rows":38512,"test_rows":9628,"official_mae_days":14.574055,"helixnid_mae_days":5.59571,"error_reduction_pct":61.604986},
+    {"test":"rolling_50_to_60","train_rows":48140,"test_rows":9628,"official_mae_days":12.251558,"helixnid_mae_days":6.889022,"error_reduction_pct":43.77024},
+    {"test":"rolling_60_to_70","train_rows":57768,"test_rows":9628,"official_mae_days":11.107707,"helixnid_mae_days":6.579612,"error_reduction_pct":40.765347},
+    {"test":"rolling_70_to_80","train_rows":67396,"test_rows":9628,"official_mae_days":12.718529,"helixnid_mae_days":4.559514,"error_reduction_pct":64.15062},
+    {"test":"rolling_80_to_90","train_rows":77024,"test_rows":9628,"official_mae_days":18.166078,"helixnid_mae_days":4.611602,"error_reduction_pct":74.614215},
+    {"test":"month_2018-01","train_rows":43669,"test_rows":7069,"official_mae_days":14.289008,"helixnid_mae_days":5.251026,"error_reduction_pct":63.251294},
+    {"test":"month_2018-02","train_rows":50738,"test_rows":6555,"official_mae_days":11.844394,"helixnid_mae_days":7.193059,"error_reduction_pct":39.27035},
+    {"test":"month_2018-03","train_rows":57293,"test_rows":7003,"official_mae_days":10.226617,"helixnid_mae_days":7.59653,"error_reduction_pct":25.718056},
+    {"test":"month_2018-04","train_rows":64296,"test_rows":6791,"official_mae_days":13.825652,"helixnid_mae_days":4.540789,"error_reduction_pct":67.156779},
+    {"test":"month_2018-05","train_rows":71087,"test_rows":6719,"official_mae_days":13.108349,"helixnid_mae_days":4.850275,"error_reduction_pct":62.998581},
+    {"test":"month_2018-06","train_rows":77806,"test_rows":6050,"official_mae_days":19.553388,"helixnid_mae_days":4.89719,"error_reduction_pct":74.954775},
+    {"test":"month_2018-07","train_rows":83856,"test_rows":6119,"official_mae_days":11.999837,"helixnid_mae_days":3.134663,"error_reduction_pct":73.877457},
+    {"test":"month_2018-08","train_rows":89975,"test_rows":6306,"official_mae_days":8.688709,"helixnid_mae_days":2.857199,"error_reduction_pct":67.11595}
+  ]
+}
