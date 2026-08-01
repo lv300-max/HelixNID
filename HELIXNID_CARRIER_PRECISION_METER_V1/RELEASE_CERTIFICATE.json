@@ -1,6 +1,6 @@
 {
   "certificate": "HELIXNID_CARRIER_PRECISION_METER_V1_RELEASE",
-  "status": "PRODUCT_COMPLETE_PRIMARY_EVIDENCE_LOCKED_CARRIER_ROW_LEVEL_ACCUMULATION_GATE",
+  "status": "PRODUCT_COMPLETE_ALL_PUBLIC_EMPIRICAL_LANES_EXECUTED_CARRIER_ROW_LEVEL_ACCUMULATION_GATE",
   "product": "HELIXNID Precision Engine V1",
   "synthetic_empirical_rows": 0,
   "primary_eta_evidence": {
@@ -43,6 +43,39 @@
     "improved_rate": 0.8513069066989787,
     "total_absolute_error_days_removed": 269503.0
   },
+  "lade_external_replication": {
+    "status": "LOCKED_PASS",
+    "dataset": "LaDe-D Jilin",
+    "source_sha256": "12e2cf4664dd5b4475d39dddee8872f5a03b3082f08f0eece7f103baee6c6e73",
+    "valid_real_tasks": 31415,
+    "chronological_train_rows": 21990,
+    "chronological_test_rows": 9425,
+    "baseline_mae_minutes": 107.21358090185676,
+    "helixnid_mae_minutes": 100.71432360742706,
+    "relative_mae_reduction_pct": 6.06197203727307,
+    "baseline_median_abs_error_minutes": 85.0,
+    "helixnid_median_abs_error_minutes": 78.0,
+    "synthetic_rows": 0,
+    "certificate_path": "HELIXNID_EMPIRICAL_LANE_ONE/product_7_10/07_external_replication/replication_certificate.json"
+  },
+  "amazon_operational_benchmark": {
+    "status": "LOCKED_PASS_MIXED_METRICS",
+    "dataset": "2021 Amazon Last Mile Routing Research Challenge",
+    "training_routes": 6112,
+    "evaluation_routes": 3052,
+    "evaluation_stops_including_station": 433231,
+    "published_evaluation_routes": 3072,
+    "published_count_gap_routes": 20,
+    "unmatched_ids_inside_downloaded_files": 0,
+    "adjacent_edge_recall_geo": 0.24805547244902235,
+    "adjacent_edge_recall_helixnid": 0.29643675094206673,
+    "adjacent_edge_relative_improvement_pct": 19.504217349200864,
+    "adjacent_edge_win_rate": 0.7306684141546527,
+    "pair_order_relative_change_pct": -3.3332701943054412,
+    "normalized_position_mae_relative_change_pct": -5.874741428523645,
+    "synthetic_rows": 0,
+    "certificate_path": "HELIXNID_EMPIRICAL_LANE_ONE/product_7_10/08_amazon_operational/release_certificate.json"
+  },
   "public_carrier_evidence": {
     "status": "LOCKED_PUBLIC_AGGREGATE",
     "carrier": "USPS",
@@ -55,9 +88,13 @@
     "row_level_shipments": 0
   },
   "deployment": {
-    "status": "BUILT",
+    "status": "BUILT_VALIDATED_OFFLINE_READY",
     "api": "FastAPI v2.0",
     "entrypoint": "app_v2:app",
+    "embedded_verified_model": true,
+    "embedded_model_dataset_sha256": "8df58ef3d2d7e9944010f7beecd9b75367f5588ec6e3c91cec19ae3345ef9ecf",
+    "embedded_model_training_rows": 96281,
+    "first_boot_network_required": false,
     "shipment_dashboard": true,
     "enterprise_dashboard": true,
     "persistence": "SQLite volume",
@@ -76,20 +113,34 @@
     "08_financial_measurement": "COMPLETE_CUSTOMER_INPUT_ONLY",
     "09_general_precision_engine": "COMPLETE"
   },
+  "software_validation": {
+    "status": "PASS",
+    "workflow": "HELIXNID Product 5-9 Validation",
+    "checks": [
+      "carrier_evidence",
+      "live_intelligence",
+      "delivered_finality",
+      "enterprise_metrics",
+      "financial_value",
+      "general_precision",
+      "official_connectors",
+      "dashboard_contracts"
+    ]
+  },
   "build_state": {
     "01_robustness": "EXECUTED_LOCKED_PASS",
     "02_ten_model_baseline_battle": "EXECUTED_LOCKED_HELIXNID_RANK_3_OF_10",
     "03_business_value": "BUILT",
-    "04_scoring_engine": "BUILT",
+    "04_scoring_engine": "EXECUTED_BUILT_OFFLINE_EMBEDDED",
     "05_carrier_evidence": "BUILT_AND_INTEGRATED",
     "06_live_intelligence": "BUILT_AND_INTEGRATED",
     "07_enterprise_measurement": "BUILT_AND_INTEGRATED",
     "08_financial_measurement": "BUILT_AND_INTEGRATED",
     "09_general_precision_engine": "BUILT_AND_INTEGRATED",
-    "10_master_certificate": "UPDATED",
+    "10_master_certificate": "FINAL_UPDATED",
     "historical_replay_extension": "EXECUTED_LOCKED_PASS",
-    "lade_external_replication": "RUNNER_BUILT_DATA_ACQUISITION_GATE",
-    "amazon_operational_benchmark": "RUNNER_BUILT_DATA_ACQUISITION_GATE"
+    "lade_external_replication": "EXECUTED_LOCKED_PASS",
+    "amazon_operational_benchmark": "EXECUTED_LOCKED_MIXED_METRICS"
   },
   "carrier_specific_row_level_gate": {
     "minimum_valid_completed_rows": 5000,
@@ -103,6 +154,5 @@
     "current_state": "DATA_ACCUMULATION",
     "automatic_claim_release": false
   },
-  "final_workflow": ".github/workflows/helixnid_carrier_precision_final_release.yml",
-  "claim_boundary": "The 69.39% figure is the locked Olist customer-promise correction result. Robustness, baseline comparison, and historical replay are executed on the verified Olist source. USPS FY2026 Q1 figures are official aggregate carrier performance and are not used as row-level model evidence. Carrier-specific accuracy claims remain gated until at least 5,000 valid completed carrier-labelled shipments retain the original promise and actual delivery. Live event adjustments are auditable operational rules until carrier-labelled replay validates them. LaDe and Amazon remain separate external operational runners without claimed generated certificates."
+  "claim_boundary": "The 69.39% figure is the locked Olist customer-promise correction result. LaDe independently confirms a 6.06% improvement on real accept-to-delivery task timing, not customer promises. Amazon confirms a 19.50% adjacent-edge recall improvement while global route-order metrics are weaker and explicitly retained. USPS FY2026 Q1 figures are official aggregate carrier performance, not row-level model evidence. Carrier-specific accuracy claims remain gated until at least 5,000 valid completed carrier-labelled shipments retain the original promise and actual delivery. Live event adjustments remain auditable operational rules until carrier-labelled replay validates them."
 }
