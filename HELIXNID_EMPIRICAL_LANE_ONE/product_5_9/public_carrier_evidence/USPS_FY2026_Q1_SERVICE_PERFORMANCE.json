@@ -1,0 +1,20 @@
+{
+  "certificate": "HELIXNID_PUBLIC_CARRIER_EVIDENCE_USPS_FY2026_Q1",
+  "status": "LOCKED_PUBLIC_AGGREGATE",
+  "carrier": "USPS",
+  "period_start": "2025-10-01",
+  "period_end": "2025-12-31",
+  "source": "USPS Service Performance Results",
+  "source_url": "https://about.usps.com/what/performance/service-performance/fy2026-q1-single-piece-first-class-mail-quarterly-performance.html",
+  "product": "Single-Piece First-Class Mail",
+  "national_on_time_pct": {
+    "two_day": 84.7,
+    "three_day": 78.4,
+    "four_day": 74.7,
+    "five_day": 87.4
+  },
+  "delivered_within_standard_plus_three_days_pct": 96.8,
+  "row_level_shipments": 0,
+  "synthetic_rows": 0,
+  "claim_boundary": "Official carrier-labelled aggregate evidence only. It is not used to train or validate the row-level HELIXNID Carrier Precision model because shipment-level original estimates and actual delivery timestamps are not published in this source."
+}
