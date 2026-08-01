@@ -1,7 +1,7 @@
 {
   "certificate": "HELIXNID_CARRIER_PRECISION_METER_V1_RELEASE",
-  "status": "DEPLOYABLE_PRIMARY_EVIDENCE_LOCKED_EXTERNAL_EXECUTION_GATES",
-  "product": "HELIXNID Carrier Precision Meter V1",
+  "status": "PRODUCT_COMPLETE_PRIMARY_EVIDENCE_LOCKED_CARRIER_ROW_LEVEL_ACCUMULATION_GATE",
+  "product": "HELIXNID Precision Engine V1",
   "synthetic_empirical_rows": 0,
   "primary_eta_evidence": {
     "dataset": "Brazilian E-Commerce Public Dataset by Olist",
@@ -43,31 +43,66 @@
     "improved_rate": 0.8513069066989787,
     "total_absolute_error_days_removed": 269503.0
   },
+  "public_carrier_evidence": {
+    "status": "LOCKED_PUBLIC_AGGREGATE",
+    "carrier": "USPS",
+    "period": "FY2026 Q1",
+    "two_day_on_time_pct": 84.7,
+    "three_day_on_time_pct": 78.4,
+    "four_day_on_time_pct": 74.7,
+    "five_day_on_time_pct": 87.4,
+    "within_standard_plus_three_days_pct": 96.8,
+    "row_level_shipments": 0
+  },
   "deployment": {
     "status": "BUILT",
-    "api": "FastAPI v1.1",
-    "dashboard": "static live dashboard",
+    "api": "FastAPI v2.0",
+    "entrypoint": "app_v2:app",
+    "shipment_dashboard": true,
+    "enterprise_dashboard": true,
     "persistence": "SQLite volume",
     "batch_json": true,
     "batch_csv": true,
     "csv_export": true,
     "docker_compose": true,
     "certificate_endpoint": true,
-    "health_endpoint": true
+    "health_endpoint": true,
+    "authorized_carrier_webhooks": ["FedEx", "USPS", "Pakket", "generic"]
+  },
+  "completed_product_layers": {
+    "05_carrier_labelled_evidence": "COMPLETE_INGESTION_CONNECTORS_AND_PUBLIC_AGGREGATE",
+    "06_live_tracking_intelligence": "COMPLETE",
+    "07_enterprise_measurement": "COMPLETE",
+    "08_financial_measurement": "COMPLETE_CUSTOMER_INPUT_ONLY",
+    "09_general_precision_engine": "COMPLETE"
   },
   "build_state": {
     "01_robustness": "EXECUTED_LOCKED_PASS",
     "02_ten_model_baseline_battle": "EXECUTED_LOCKED_HELIXNID_RANK_3_OF_10",
     "03_business_value": "BUILT",
     "04_scoring_engine": "BUILT",
-    "05_api": "DEPLOYMENT_HARDENED",
-    "06_dashboard": "BUILT",
-    "07_lade_external_replication": "RUNNER_BUILT_DATA_ACQUISITION_GATE",
-    "08_amazon_operational_benchmark": "RUNNER_BUILT_DATA_ACQUISITION_GATE",
-    "09_executive_release_package": "BUILT",
+    "05_carrier_evidence": "BUILT_AND_INTEGRATED",
+    "06_live_intelligence": "BUILT_AND_INTEGRATED",
+    "07_enterprise_measurement": "BUILT_AND_INTEGRATED",
+    "08_financial_measurement": "BUILT_AND_INTEGRATED",
+    "09_general_precision_engine": "BUILT_AND_INTEGRATED",
     "10_master_certificate": "UPDATED",
-    "historical_replay_extension": "EXECUTED_LOCKED_PASS"
+    "historical_replay_extension": "EXECUTED_LOCKED_PASS",
+    "lade_external_replication": "RUNNER_BUILT_DATA_ACQUISITION_GATE",
+    "amazon_operational_benchmark": "RUNNER_BUILT_DATA_ACQUISITION_GATE"
+  },
+  "carrier_specific_row_level_gate": {
+    "minimum_valid_completed_rows": 5000,
+    "required_fields": [
+      "shipment_id",
+      "carrier",
+      "carrier_handoff_time",
+      "promised_delivery_time",
+      "actual_delivery_time"
+    ],
+    "current_state": "DATA_ACCUMULATION",
+    "automatic_claim_release": false
   },
   "final_workflow": ".github/workflows/helixnid_carrier_precision_final_release.yml",
-  "claim_boundary": "The 69.39% figure is the locked Olist customer-promise correction result. The robustness and ten-model comparisons are now executed on the same verified Olist source. LaDe and Amazon remain separate external operational lanes whose runners are built but whose certificates are not claimed until those public datasets execute in an environment that can acquire them. Carrier-brand-specific ETA claims require carrier-labelled completed shipment evidence."
+  "claim_boundary": "The 69.39% figure is the locked Olist customer-promise correction result. Robustness, baseline comparison, and historical replay are executed on the verified Olist source. USPS FY2026 Q1 figures are official aggregate carrier performance and are not used as row-level model evidence. Carrier-specific accuracy claims remain gated until at least 5,000 valid completed carrier-labelled shipments retain the original promise and actual delivery. Live event adjustments are auditable operational rules until carrier-labelled replay validates them. LaDe and Amazon remain separate external operational runners without claimed generated certificates."
 }
