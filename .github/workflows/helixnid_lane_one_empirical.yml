@@ -6,6 +6,11 @@ on:
       - 'HELIXNID_EMPIRICAL_LANE_ONE/src/**'
       - 'HELIXNID_EMPIRICAL_LANE_ONE/README.md'
       - '.github/workflows/helixnid_lane_one_empirical.yml'
+      - 'HELIXNID_EMPIRICAL_LANE_ONE/RUN_*'
+  pull_request:
+    paths:
+      - 'HELIXNID_EMPIRICAL_LANE_ONE/**'
+      - '.github/workflows/helixnid_lane_one_empirical.yml'
   workflow_dispatch:
 
 permissions:
@@ -38,7 +43,8 @@ jobs:
       - name: Show Amazon route certificate
         run: cat HELIXNID_EMPIRICAL_LANE_ONE/reports/release_certificate.json
 
-      - name: Commit real evidence package
+      - name: Commit real evidence package on main push
+        if: github.event_name == 'push'
         run: |
           git config user.name "HELIXNID Empirical Bot"
           git config user.email "actions@users.noreply.github.com"
