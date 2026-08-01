@@ -1,0 +1,9 @@
+{
+  "dataset": "LaDe-D",
+  "city": "Jilin",
+  "source_url": "https://huggingface.co/datasets/Cainiao-AI/LaDe/resolve/main/delivery/delivery_jl.csv?download=true",
+  "bytes": 4736342,
+  "sha256": "12e2cf4664dd5b4475d39dddee8872f5a03b3082f08f0eece7f103baee6c6e73",
+  "synthetic_rows": 0,
+  "identity_verified": true
+}
