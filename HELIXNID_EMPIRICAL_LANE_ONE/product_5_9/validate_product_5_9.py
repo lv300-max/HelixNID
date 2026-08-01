@@ -83,8 +83,20 @@ def main():
         }, dummy_score)
         checks["live_intelligence"] = state["live_late_probability"] > state["base_late_probability"] and state["event_count"] == 1
 
+        delivered = live_intelligence.record_event(db, {
+            "shipment_id": "VALIDATE-1", "carrier": "FedEx",
+            "event_timestamp": datetime.now(timezone.utc).isoformat(), "status": "Delivered",
+            "estimated_delivery": "2026-01-08T17:00:00+00:00"
+        }, dummy_score)
+        checks["delivered_finality"] = (
+            delivered["delivered"] is True
+            and delivered["live_late_probability"] == 0.0
+            and delivered["live_risk_band"] == "LOW"
+            and delivered["scan_silence_hours"] == 0.0
+        )
+
         summary = enterprise_metrics.summary(db)
-        checks["enterprise_metrics"] = summary["shipments_scored"] == 1 and summary["tracking_events"] == 1
+        checks["enterprise_metrics"] = summary["shipments_scored"] == 1 and summary["tracking_events"] == 2
 
         value = financial_value.calculate({
             "shipment_volume": 10000, "intervention_success_rate": 0.25,
