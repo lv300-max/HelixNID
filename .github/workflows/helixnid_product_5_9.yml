@@ -1,0 +1,58 @@
+name: HELIXNID Product 5-9 Validation
+
+on:
+  push:
+    paths:
+      - 'HELIXNID_EMPIRICAL_LANE_ONE/product_5_9/**'
+      - 'HELIXNID_EMPIRICAL_LANE_ONE/product_5_6/05_api/**'
+      - 'HELIXNID_EMPIRICAL_LANE_ONE/product_5_6/06_dashboard/**'
+      - 'HELIXNID_EMPIRICAL_LANE_ONE/RUN_PRODUCT_5_9'
+      - '.github/workflows/helixnid_product_5_9.yml'
+  pull_request:
+    paths:
+      - 'HELIXNID_EMPIRICAL_LANE_ONE/product_5_9/**'
+      - 'HELIXNID_EMPIRICAL_LANE_ONE/product_5_6/05_api/**'
+      - 'HELIXNID_EMPIRICAL_LANE_ONE/product_5_6/06_dashboard/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install API dependencies
+        run: python -m pip install -r HELIXNID_EMPIRICAL_LANE_ONE/product_5_6/05_api/requirements.txt
+      - name: Compile final product source
+        run: |
+          python -m py_compile HELIXNID_EMPIRICAL_LANE_ONE/product_5_6/05_api/app.py
+          python -m py_compile HELIXNID_EMPIRICAL_LANE_ONE/product_5_6/05_api/app_v2.py
+          python -m py_compile HELIXNID_EMPIRICAL_LANE_ONE/product_5_9/*.py
+      - name: Run integrated validation
+        working-directory: HELIXNID_EMPIRICAL_LANE_ONE/product_5_9
+        run: python validate_product_5_9.py
+      - name: Verify dashboard contracts
+        run: |
+          grep -q '/enterprise/summary' HELIXNID_EMPIRICAL_LANE_ONE/product_5_6/06_dashboard/enterprise.js
+          grep -q '/tracking-event' HELIXNID_EMPIRICAL_LANE_ONE/product_5_6/06_dashboard/enterprise.js
+          grep -q '/financial-value' HELIXNID_EMPIRICAL_LANE_ONE/product_5_6/06_dashboard/enterprise.js
+      - name: Lock validation certificate
+        if: github.event_name == 'push'
+        run: |
+          git config user.name "HELIXNID Product Validator"
+          git config user.email "actions@users.noreply.github.com"
+          git add HELIXNID_EMPIRICAL_LANE_ONE/product_5_9/PRODUCT_5_9_VALIDATION_CERTIFICATE.json
+          if git diff --cached --quiet; then
+            echo "No validation changes"
+          else
+            git commit -m "Lock HELIXNID Product 5-9 validation certificate"
+            git push
+          fi
