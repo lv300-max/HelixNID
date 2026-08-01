@@ -1,0 +1,13 @@
+{
+  "published_evaluation_route_count": 3072,
+  "downloaded_actual_sequence_ids": 3052,
+  "downloaded_route_data_ids": 3052,
+  "usable_paired_evaluation_routes": 3052,
+  "published_count_gap_routes": 20,
+  "actual_sequence_ids_without_route_data": 0,
+  "route_data_ids_without_actual_sequence": 0,
+  "unmatched_ids_inside_downloaded_files": 0,
+  "actual_sequence_only_ids": [],
+  "route_data_only_ids": [],
+  "usable_intersection_gate": "PASS"
+}
