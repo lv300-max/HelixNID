@@ -12,9 +12,9 @@ permissions:
   contents: write
 
 jobs:
-  real-last-mile-benchmark:
+  real-empirical-benchmarks:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
       - name: Checkout HELIXNID
         uses: actions/checkout@v4
@@ -26,20 +26,26 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Acquire real Amazon data and run benchmark
+      - name: Acquire real Olist orders and run delivery-promise benchmark
+        run: python HELIXNID_EMPIRICAL_LANE_ONE/src/helixnid_olist_eta_benchmark.py
+
+      - name: Show Olist Carrier Precision certificate
+        run: cat HELIXNID_EMPIRICAL_LANE_ONE/reports_olist_eta/release_certificate.json
+
+      - name: Acquire real Amazon routes and run route benchmark
         run: python HELIXNID_EMPIRICAL_LANE_ONE/src/helixnid_last_mile_benchmark.py
 
-      - name: Show empirical certificate
+      - name: Show Amazon route certificate
         run: cat HELIXNID_EMPIRICAL_LANE_ONE/reports/release_certificate.json
 
-      - name: Commit evidence package
+      - name: Commit real evidence package
         run: |
           git config user.name "HELIXNID Empirical Bot"
           git config user.email "actions@users.noreply.github.com"
-          git add HELIXNID_EMPIRICAL_LANE_ONE/reports
+          git add HELIXNID_EMPIRICAL_LANE_ONE/reports HELIXNID_EMPIRICAL_LANE_ONE/reports_olist_eta
           if git diff --cached --quiet; then
             echo "No report changes"
           else
-            git commit -m "Lock Lane One real Amazon empirical benchmark results"
+            git commit -m "Lock Lane One real Olist and Amazon empirical results"
             git push
           fi
