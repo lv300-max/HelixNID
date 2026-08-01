@@ -1,0 +1,29 @@
+{
+  "certificate": "HELIXNID_CARRIER_PRECISION_BASELINE_BATTLE_V1",
+  "status": "PASS",
+  "dataset_sha256": "8df58ef3d2d7e9944010f7beecd9b75367f5588ec6e3c91cec19ae3345ef9ecf",
+  "synthetic_rows": 0,
+  "chronological_train_rows": 67396,
+  "chronological_future_test_rows": 28885,
+  "models_compared": 10,
+  "winner": "09 XGBoost",
+  "winner_mae_days": 3.853526618585161,
+  "winner_error_reduction_vs_official_pct": 71.34133297515103,
+  "helixnid_rank": 3,
+  "helixnid_mae_days": 4.116081010905314,
+  "helixnid_error_reduction_vs_official_pct": 69.38871667061453,
+  "gap_to_winner_mae_days": 0.262554392320153,
+  "leaderboard": [
+    {"rank":1,"model":"09 XGBoost","mae_days":3.853526618585161,"error_reduction_vs_official_pct":71.34133297515103},
+    {"rank":2,"model":"08 Gradient boosting","mae_days":3.9618220952406573,"error_reduction_vs_official_pct":70.53593980859063},
+    {"rank":3,"model":"10 HELIXNID historical hierarchy","mae_days":4.116081010905314,"error_reduction_vs_official_pct":69.38871667061453},
+    {"rank":4,"model":"07 Extra trees","mae_days":4.237065803368942,"error_reduction_vs_official_pct":68.488953096759},
+    {"rank":5,"model":"06 Random forest","mae_days":4.545934235715125,"error_reduction_vs_official_pct":66.19189940199401},
+    {"rank":6,"model":"04 Linear regression","mae_days":6.892496874631962,"error_reduction_vs_official_pct":48.74051941221222},
+    {"rank":7,"model":"05 Ridge regression","mae_days":6.8924971162655755,"error_reduction_vs_official_pct":48.74051761518369},
+    {"rank":8,"model":"02 Global median correction","mae_days":7.1038255149731695,"error_reduction_vs_official_pct":47.1688688863943},
+    {"rank":9,"model":"03 Recent-5000 median","mae_days":7.182447637181928,"error_reduction_vs_official_pct":46.58415637648174},
+    {"rank":10,"model":"01 Official promise","mae_days":13.4462870001731,"error_reduction_vs_official_pct":0.0}
+  ],
+  "claim_boundary": "HELIXNID is third on this fixed 10-model comparison. The certificate intentionally records the two boosted models that outperform it."
+}
