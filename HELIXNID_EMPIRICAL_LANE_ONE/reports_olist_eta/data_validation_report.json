@@ -1,0 +1,16 @@
+{
+  "raw_orders": 99441,
+  "delivered_status_rows": 96478,
+  "complete_timestamp_rows": 96469,
+  "chronology_exclusions": 188,
+  "valid_real_completed_orders": 96281,
+  "synthetic_rows_used": 0,
+  "chronological_train_orders": 67396,
+  "chronological_test_orders": 28885,
+  "train_first_purchase": "2016-09-15T12:16:38",
+  "train_last_purchase": "2018-04-15T12:14:23",
+  "test_first_purchase": "2018-04-15T12:16:49",
+  "test_last_purchase": "2018-08-29T15:00:37",
+  "orders_sha256_verified": true,
+  "test_target_used_as_feature": false
+}
