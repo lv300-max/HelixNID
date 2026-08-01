@@ -1,0 +1,52 @@
+name: HELIXNID Carrier Precision Product 1-4
+
+on:
+  push:
+    paths:
+      - 'HELIXNID_EMPIRICAL_LANE_ONE/src/robustness_suite.py'
+      - 'HELIXNID_EMPIRICAL_LANE_ONE/src/baseline_battle.py'
+      - 'HELIXNID_EMPIRICAL_LANE_ONE/src/business_value.py'
+      - 'HELIXNID_EMPIRICAL_LANE_ONE/src/carrier_precision_engine.py'
+      - 'HELIXNID_EMPIRICAL_LANE_ONE/src/run_product_1_4.py'
+      - 'HELIXNID_EMPIRICAL_LANE_ONE/requirements_product_1_4.txt'
+      - '.github/workflows/helixnid_product_1_4.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-product-1-4:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout HELIXNID
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install model battle dependencies
+        run: python -m pip install -r HELIXNID_EMPIRICAL_LANE_ONE/requirements_product_1_4.txt
+
+      - name: Run robustness, baseline battle, business conversion, scoring engine
+        run: python HELIXNID_EMPIRICAL_LANE_ONE/src/run_product_1_4.py
+
+      - name: Show product certificate
+        run: cat HELIXNID_EMPIRICAL_LANE_ONE/product_1_4/PRODUCT_1_4_CERTIFICATE.json
+
+      - name: Lock generated product evidence
+        run: |
+          git config user.name "HELIXNID Product Builder"
+          git config user.email "actions@users.noreply.github.com"
+          git add HELIXNID_EMPIRICAL_LANE_ONE/product_1_4
+          if git diff --cached --quiet; then
+            echo "No generated changes"
+          else
+            git commit -m "Lock HELIXNID Carrier Precision Product 1-4 outputs"
+            git push
+          fi
