@@ -1,0 +1,45 @@
+name: HELIXNID Lane One Real Empirical Benchmark
+
+on:
+  push:
+    paths:
+      - 'HELIXNID_EMPIRICAL_LANE_ONE/src/**'
+      - 'HELIXNID_EMPIRICAL_LANE_ONE/README.md'
+      - '.github/workflows/helixnid_lane_one_empirical.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  real-last-mile-benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout HELIXNID
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Acquire real Amazon data and run benchmark
+        run: python HELIXNID_EMPIRICAL_LANE_ONE/src/helixnid_last_mile_benchmark.py
+
+      - name: Show empirical certificate
+        run: cat HELIXNID_EMPIRICAL_LANE_ONE/reports/release_certificate.json
+
+      - name: Commit evidence package
+        run: |
+          git config user.name "HELIXNID Empirical Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add HELIXNID_EMPIRICAL_LANE_ONE/reports
+          if git diff --cached --quiet; then
+            echo "No report changes"
+          else
+            git commit -m "Lock Lane One real Amazon empirical benchmark results"
+            git push
+          fi
