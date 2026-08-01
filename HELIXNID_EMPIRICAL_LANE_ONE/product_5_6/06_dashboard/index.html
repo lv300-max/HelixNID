@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>HELIXNID Carrier Precision Meter</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="bg-orb orb-a"></div>
+  <div class="bg-orb orb-b"></div>
+  <main class="shell">
+    <header class="topbar glass">
+      <div>
+        <div class="eyebrow">HELIXNID</div>
+        <h1>Carrier Precision Meter</h1>
+      </div>
+      <div class="api-control">
+        <label for="apiBase">API</label>
+        <input id="apiBase" value="http://localhost:8000" />
+        <button id="connectBtn">Connect</button>
+        <span id="statusDot" class="status-dot"></span>
+      </div>
+    </header>
+
+    <section class="metric-grid">
+      <article class="metric glass"><span>Shipments scored</span><strong id="metricScored">0</strong></article>
+      <article class="metric glass"><span>High risk</span><strong id="metricHigh">0</strong></article>
+      <article class="metric glass"><span>Avg correction</span><strong id="metricCorrection">0.00 d</strong></article>
+      <article class="metric glass"><span>Locked ETA reduction</span><strong id="metricEvidence">69.39%</strong></article>
+    </section>
+
+    <section class="workspace">
+      <article class="panel glass score-panel">
+        <div class="panel-head">
+          <div>
+            <div class="eyebrow">LIVE SCORE</div>
+            <h2>Score a shipment</h2>
+          </div>
+          <button id="demoBtn" class="ghost">Fill example</button>
+        </div>
+
+        <form id="scoreForm" class="form-grid">
+          <label>Shipment ID<input id="shipmentId" placeholder="SHIP-1001" /></label>
+          <label>Carrier<input id="carrier" placeholder="Carrier" /></label>
+          <label>Service<input id="service" placeholder="Ground" /></label>
+          <label>Destination<input id="destination" placeholder="08731" /></label>
+          <label>Ship / purchase time<input id="shipTime" type="datetime-local" required /></label>
+          <label>Carrier handoff<input id="handoffTime" type="datetime-local" required /></label>
+          <label class="wide">Original ETA<input id="etaTime" type="datetime-local" required /></label>
+          <button class="primary wide" type="submit">Score shipment</button>
+        </form>
+      </article>
+
+      <article class="panel glass result-panel">
+        <div class="eyebrow">HELIXNID OUTPUT</div>
+        <div id="emptyState" class="empty-state">Score a shipment to see the correction.</div>
+        <div id="resultState" class="result-state hidden">
+          <div class="risk-row">
+            <div>
+              <span class="small-label">Risk band</span>
+              <strong id="riskBand" class="risk-badge">—</strong>
+            </div>
+            <div class="risk-number"><span>Late probability</span><strong id="lateProb">—</strong></div>
+          </div>
+          <div class="eta-block">
+            <span>Original ETA</span><strong id="originalEta">—</strong>
+            <span>HELIXNID corrected ETA</span><strong id="correctedEta">—</strong>
+          </div>
+          <div class="result-grid">
+            <div><span>Correction</span><strong id="correctionDays">—</strong></div>
+            <div><span>Confidence</span><strong id="confidence">—</strong></div>
+            <div><span>History match</span><strong id="historyRows">—</strong></div>
+            <div><span>Warning window</span><strong id="warningHours">—</strong></div>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="lower-grid">
+      <article class="panel glass">
+        <div class="eyebrow">PROOF</div>
+        <h2>Locked empirical evidence</h2>
+        <div class="proof-grid">
+          <div><span>Real completed orders</span><strong id="proofOrders">96,281</strong></div>
+          <div><span>Future holdout</span><strong id="proofTest">28,885</strong></div>
+          <div><span>Official MAE</span><strong id="proofOfficial">13.446 d</strong></div>
+          <div><span>HELIXNID MAE</span><strong id="proofHelix">4.116 d</strong></div>
+          <div><span>Error reduction</span><strong id="proofReduction">69.39%</strong></div>
+          <div><span>Synthetic claim rows</span><strong id="proofSynthetic">0</strong></div>
+        </div>
+        <div class="hash-line">Dataset hash <code id="proofHash">loading…</code></div>
+      </article>
+
+      <article class="panel glass">
+        <div class="eyebrow">RECENT</div>
+        <h2>Scored shipments</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>Risk</th><th>Correction</th><th>Confidence</th></tr></thead>
+            <tbody id="recentRows"><tr><td colspan="4" class="muted">No shipments scored yet.</td></tr></tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>
